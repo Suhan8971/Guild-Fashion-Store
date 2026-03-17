@@ -1,0 +1,40 @@
+# Environments
+.env
+.env.*
+!.env.example
+venv/
+env/
+ENV/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.sqlite3
+backend/media/
+
+# Node
+node_modules/
+dist/
+build/
+.npm/
+
+# Logs and outputs
+*.log
+backend_logs.txt
+backend/errors.txt
+backend/output.txt
+backend/test_output.txt
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS generated files
+.DS_Store
+ehthumbs.db
+Thumbs.db
+
+# IDEs
+.vscode/
+.idea/
+*.swp
