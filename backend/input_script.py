@@ -1,8 +1,12 @@
+import os
+from dotenv import load_dotenv
 from django.contrib.auth import get_user_model
+
+load_dotenv()
 User = get_user_model()
 
-username_input = "suhankaminofficial@gmail.com"
-password_input = "@897155Kavanamin"
+username_input = os.getenv('DEBUG_USER_EMAIL', 'debug@example.com')
+password_input = os.getenv('DEBUG_USER_PASSWORD', 'debugpass')
 
 print(f"Checking user: {username_input}")
 

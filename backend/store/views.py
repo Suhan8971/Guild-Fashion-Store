@@ -931,7 +931,7 @@ class ContactQueryViewSet(viewsets.ModelViewSet):
 
 class IsSuperAdmin(permissions.BasePermission):
     def has_permission(self, request, view):
-        return bool(request.user and request.user.is_authenticated and request.user.email == 'suhankaminofficial@gmail.com')
+        return bool(request.user and request.user.is_authenticated and request.user.email == settings.SUPER_ADMIN_EMAIL)
 
 class SuperAdminViewSet(viewsets.ModelViewSet):
     permission_classes = [IsSuperAdmin]

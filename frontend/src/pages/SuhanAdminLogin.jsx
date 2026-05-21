@@ -17,7 +17,7 @@ const SuhanAdminLogin = ({ setUser }) => {
     const [editUserId, setEditUserId] = useState(null);
     const [formData, setFormData] = useState({ email: '', password: '', role: 'admin' });
 
-    const SUPER_ADMIN_EMAIL = 'suhankaminofficial@gmail.com';
+    const SUPER_ADMIN_EMAIL = import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admin@example.com';
 
     const handleLogin = async (e) => {
         e.preventDefault();

@@ -25,7 +25,7 @@ load_dotenv(os.path.join(BASE_DIR, '.env'))
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-wk*rjav5^y2fm8sqe^163y7p^$i@#lyihn1*q_9jon1&6*)h9m'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-replace-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -114,8 +114,8 @@ WSGI_APPLICATION = 'backend_project.wsgi.application'
 
 
 # Razorpay Configuration
-RAZORPAY_KEY_ID = 'rzp_test_YOUR_KEY_HERE'
-RAZORPAY_KEY_SECRET = 'YOUR_SECRET_KEY_HERE'
+RAZORPAY_KEY_ID = os.environ.get('RAZORPAY_KEY_ID', 'rzp_test_YOUR_KEY_HERE')
+RAZORPAY_KEY_SECRET = os.environ.get('RAZORPAY_KEY_SECRET', 'YOUR_SECRET_KEY_HERE')
 
 
 # Database
@@ -173,6 +173,7 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 AUTH_USER_MODEL = 'store.User'
+SUPER_ADMIN_EMAIL = os.environ.get('SUPER_ADMIN_EMAIL', 'admin@example.com')
 
 CORS_ALLOW_ALL_ORIGINS = True
 

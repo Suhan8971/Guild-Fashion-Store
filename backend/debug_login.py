@@ -1,6 +1,9 @@
 import os
 import django
 from django.conf import settings
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Setup Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend_project.settings')
@@ -10,8 +13,8 @@ from django.contrib.auth import get_user_model
 
 User = get_user_model()
 
-username_input = "suhankaminofficial@gmail.com"
-password_input = "@897155Kavanamin"
+username_input = os.getenv('DEBUG_USER_EMAIL', 'debug@example.com')
+password_input = os.getenv('DEBUG_USER_PASSWORD', 'debugpass')
 
 print(f"Checking user: {username_input}")
 

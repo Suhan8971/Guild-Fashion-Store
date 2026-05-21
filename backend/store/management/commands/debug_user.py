@@ -1,13 +1,17 @@
+import os
 from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
+from dotenv import load_dotenv
+
+load_dotenv()
 
 class Command(BaseCommand):
     help = 'Debug user login and reset password'
 
     def handle(self, *args, **kwargs):
         User = get_user_model()
-        username_input = "suhankaminofficial@gmail.com"
-        password_input = "@897155Kavanamin"
+        username_input = os.getenv('DEBUG_USER_EMAIL', 'debug@example.com')
+        password_input = os.getenv('DEBUG_USER_PASSWORD', 'debugpass')
 
         self.stdout.write(f"Checking user: {username_input}")
 

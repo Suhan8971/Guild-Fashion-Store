@@ -10,9 +10,9 @@ django.setup()
 from django.contrib.auth import get_user_model
 User = get_user_model()
 
-username = 'suhan'
-email = 'suhankaminofficial@gmail.com'
-password = '@897155Kavanamin'
+username = os.getenv('DJANGO_SUPERUSER_USERNAME', 'admin')
+email = os.getenv('DJANGO_SUPERUSER_EMAIL', 'admin@example.com')
+password = os.getenv('DJANGO_SUPERUSER_PASSWORD', 'admin123')
 role = 'admin'
 
 if not User.objects.filter(username=username).exists():

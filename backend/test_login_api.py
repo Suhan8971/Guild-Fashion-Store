@@ -1,10 +1,14 @@
+import os
 import requests
 import json
+from dotenv import load_dotenv
+
+load_dotenv()
 
 url = "http://127.0.0.1:8000/api/auth/login/"
 payload = {
-    "username": "suhankaminofficial@gmail.com",
-    "password": "@897155Kavanamin"
+    "username": os.getenv('DEBUG_USER_EMAIL', 'debug@example.com'),
+    "password": os.getenv('DEBUG_USER_PASSWORD', 'debugpass')
 }
 headers = {
     "Content-Type": "application/json"

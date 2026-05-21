@@ -12,12 +12,13 @@ User = get_user_model()
 
 try:
     # Check by email or username
-    email = 'suhankaminofficial@gmail.com'
+    email = os.getenv('DEBUG_USER_EMAIL', 'debug@example.com')
+    password = os.getenv('DEBUG_USER_PASSWORD', 'debugpass')
     u = User.objects.filter(email=email).first() or User.objects.filter(username=email).first()
     
     if u:
         print(f"User found: {u.username} (Email: {u.email})")
-        print(f"Password check: {u.check_password('@897155Kavanamin')}")
+        print(f"Password check: {u.check_password(password)}")
     else:
         print("User not found")
 except User.DoesNotExist:
