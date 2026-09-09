@@ -45,6 +45,9 @@ scratch_proof_view*
 # Database Dumps & Local Architecture Docs
 store_db_backup.sql
 DATABASE_ARCHITECTURE.md
+read.md
+run_backend.sh
+
 
 # OS & IDEs
 .DS_Store
