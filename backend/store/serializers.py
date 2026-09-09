@@ -1,8 +1,24 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from .models import Category, Product, ProductSize, MatchingOutfit, Order, OrderItem, Transaction, Cart, CartItem, ReturnRequest, ContactQuery, OrderItemShipmentProof
+from .models import (
+    Category, Product, ProductSize, MatchingOutfit, Order, OrderItem, Transaction, Cart, CartItem,
+    ReturnRequest, ContactQuery, OrderItemShipmentProof, Address, ReturnPolicyConfig, StockReservation,
+    OrderReturnRequest, OrderReturnRequestItem, InventoryAuditLog
+)
 
 User = get_user_model()
+
+class ReturnPolicyConfigSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ReturnPolicyConfig
+        fields = '__all__'
+
+class AddressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Address
+        fields = '__all__'
+        read_only_fields = ('user',)
+
 
 class OrderItemShipmentProofSerializer(serializers.ModelSerializer):
     uploaded_by_admin_name = serializers.ReadOnlyField(source='uploaded_by_admin.username')
@@ -155,4 +171,42 @@ class CartSerializer(serializers.ModelSerializer):
 class ContactQuerySerializer(serializers.ModelSerializer):
     class Meta:
         model = ContactQuery
+        fields = '__all__'
+
+class InventoryAuditLogSerializer(serializers.ModelSerializer):
+    user_name = serializers.ReadOnlyField(source='user.username')
+    product_name = serializers.ReadOnlyField(source='product.name')
+
+    class Meta:
+        model = InventoryAuditLog
+        fields = '__all__'
+
+class OrderReturnRequestItemSerializer(serializers.ModelSerializer):
+    product_name = serializers.ReadOnlyField(source='order_item.product.name')
+    product_image = serializers.SerializerMethodField()
+    original_size = serializers.ReadOnlyField(source='order_item.size')
+    price = serializers.ReadOnlyField(source='order_item.price')
+
+    class Meta:
+        model = OrderReturnRequestItem
+        fields = '__all__'
+
+    def get_product_image(self, obj):
+        if obj.order_item and obj.order_item.product and obj.order_item.product.image:
+            return obj.order_item.product.image.url
+        return None
+
+class OrderReturnRequestSerializer(serializers.ModelSerializer):
+    items = OrderReturnRequestItemSerializer(many=True, read_only=True)
+    order_date = serializers.ReadOnlyField(source='order.created_at')
+    user_username = serializers.ReadOnlyField(source='user.username')
+
+    class Meta:
+        model = OrderReturnRequest
+        fields = '__all__'
+
+from .models import StockReservation
+class StockReservationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = StockReservation
         fields = '__all__'

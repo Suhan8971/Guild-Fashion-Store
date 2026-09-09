@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { useModal } from '../context/ModalContext';
 
 const SuhanAdminLogin = ({ setUser }) => {
+    const { showAlert, showConfirm } = useModal();
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
@@ -77,10 +79,18 @@ const SuhanAdminLogin = ({ setUser }) => {
     };
 
     const handleDelete = async (userId) => {
-        if (window.confirm("Are you sure you want to revoke access and delete this account?")) {
+        const confirmed = await showConfirm({
+            title: 'Delete Account',
+            message: 'Are you sure you want to revoke access and delete this account?',
+            type: 'danger',
+            confirmText: 'Delete Account',
+            isDanger: true,
+        });
+        if (confirmed) {
             try {
                 await api.delete(`/superadmin/users/${userId}/`);
                 fetchUsers();
+                showAlert({ title: 'Account Deleted', message: 'Account revoked and deleted successfully.', type: 'success' });
             } catch (err) {
                 console.error(err);
                 setError('Failed to disable account.');

@@ -1,8 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useModal } from '../context/ModalContext';
 import api, { orderAPI } from '../services/api';
+
+const roundShippingCharge = (val) => {
+    const num = parseFloat(val);
+    if (isNaN(num)) return 0;
+    const integerPart = Math.floor(num);
+    const decimalPart = num - integerPart;
+    // If decimal part starts with 0 (< 0.1), round down. Otherwise round up.
+    return decimalPart < 0.1 ? integerPart : integerPart + 1;
+};
 
 const Checkout = () => {
     const { cart, fetchCart } = useCart();
@@ -10,10 +19,26 @@ const Checkout = () => {
     const location = useLocation();
     const { showModal } = useModal();
     const [loading, setLoading] = useState(false);
+    const isOrderPlacedRef = useRef(false);
+    const [verifiedPhone, setVerifiedPhone] = useState(() => localStorage.getItem('checkout_verifiedPhone') || '');
+
+    // Get selected items from navigation state, or default to all if none
+    const selectedItemIds = location.state?.selectedItems || [];
+
+    // Filter cart items based on selection
+    const checkoutItems = selectedItemIds.length > 0
+        ? cart.filter(item => selectedItemIds.includes(item.id))
+        : cart;
 
     const [shippingCost, setShippingCost] = useState(0);
     const [shippingLoading, setShippingLoading] = useState(false);
     const [shippingError, setShippingError] = useState('');
+
+    // Calculate total for checkout
+    const checkoutItemsTotal = checkoutItems.reduce((total, item) => total + (item.total_price || (item.product_details.price * item.quantity)), 0);
+    const rawTotal = checkoutItemsTotal + shippingCost;
+    const checkoutTotal = Math.round(rawTotal);
+    const roundOff = parseFloat((checkoutTotal - rawTotal).toFixed(2));
 
     // OTP & Captcha States
     const [otpSent, setOtpSent] = useState(() => JSON.parse(localStorage.getItem('checkout_otpSent')) || false);
@@ -40,6 +65,40 @@ const Checkout = () => {
         setCaptchaInput('');
         setCaptchaVerified(false);
     };
+
+    
+    // Stock Reservation and Auto-Release Effect
+    useEffect(() => {
+        if (cart.length === 0) return;
+        let active = true;
+        const reserveStock = async () => {
+            if (selectedItemIds.length > 0) {
+                try {
+                    await api.post('/checkout/reserve-stock/', { selected_item_ids: selectedItemIds });
+                } catch (err) {
+                    if (!active) return;
+                    const errMsg = err.response?.data?.error || "Stock reservation failed. Product is out of stock.";
+                    showModal({
+                        title: "Stock Unavailable",
+                        message: errMsg,
+                        type: "error",
+                        confirmText: "Back to Cart",
+                        onConfirm: () => navigate("/cart"),
+                        onCancel: () => navigate("/cart")
+                    });
+                }
+            }
+        };
+
+        reserveStock();
+
+        return () => {
+            active = false;
+            if (!isOrderPlacedRef.current && selectedItemIds.length > 0) {
+                api.post('/checkout/release-stock/', { selected_item_ids: selectedItemIds }).catch(() => {});
+            }
+        };
+    }, [cart, navigate, selectedItemIds]);
 
     const handleSendOTP = async () => {
         // Enforce all shipping details are filled
@@ -101,6 +160,8 @@ const Checkout = () => {
             });
             if (res.data.verified) {
                 setOtpVerified(true);
+                setVerifiedPhone(shippingDetails.phone);
+                localStorage.setItem('checkout_verifiedPhone', shippingDetails.phone);
                 showModal({
                     title: 'Verified',
                     message: 'Phone number verified successfully!',
@@ -132,18 +193,6 @@ const Checkout = () => {
         }
     };
 
-    // Get selected items from navigation state, or default to all if none (though Cart page prevents this)
-    const selectedItemIds = location.state?.selectedItems || [];
-
-    // Filter cart items based on selection
-    const checkoutItems = selectedItemIds.length > 0
-        ? cart.filter(item => selectedItemIds.includes(item.id))
-        : cart;
-
-    // Calculate total for checkout
-    const checkoutItemsTotal = checkoutItems.reduce((total, item) => total + (item.total_price || (item.product_details.price * item.quantity)), 0);
-    const checkoutTotal = checkoutItemsTotal + shippingCost;
-
     const [shippingDetails, setShippingDetails] = useState(() => {
         const saved = localStorage.getItem('checkout_shippingDetails');
         return saved ? JSON.parse(saved) : {
@@ -155,6 +204,35 @@ const Checkout = () => {
             phone: ''
         };
     });
+
+    useEffect(() => {
+        const prefillProfile = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            try {
+                const profileRes = await api.get('/auth/profile/');
+                const phoneNum = profileRes.data.phone_number || '';
+
+                const addrRes = await api.get('/addresses/');
+                const defaultAddr = addrRes.data.find(a => a.is_default) || addrRes.data[0];
+
+                if (defaultAddr || phoneNum) {
+                    const newDetails = {
+                        fullName: defaultAddr ? defaultAddr.full_name : '',
+                        address: defaultAddr ? `${defaultAddr.house_name}, ${defaultAddr.street_area}${defaultAddr.landmark ? `, Landmark: ${defaultAddr.landmark}` : ''}` : '',
+                        city: defaultAddr ? defaultAddr.city : '',
+                        state: defaultAddr ? defaultAddr.state : '',
+                        zipCode: defaultAddr ? defaultAddr.pincode : '',
+                        phone: phoneNum || (defaultAddr ? defaultAddr.phone_number : '')
+                    };
+                    setShippingDetails(newDetails);
+                }
+            } catch (err) {
+                console.error("Prefill checkout details failed:", err);
+            }
+        };
+        prefillProfile();
+    }, []);
 
     const [paymentMethod, setPaymentMethod] = useState(() => {
         return localStorage.getItem('checkout_paymentMethod') || 'cod';
@@ -169,7 +247,7 @@ const Checkout = () => {
                 try {
                     const response = await orderAPI.calculateShipping(shippingDetails.zipCode, selectedItemIds);
                     if (response.data && response.data.shipping_cost) {
-                        setShippingCost(response.data.shipping_cost);
+                        setShippingCost(roundShippingCharge(response.data.shipping_cost));
                     } else if (response.data.error) {
                         setShippingError(response.data.error);
                         setShippingCost(0);
@@ -305,7 +383,8 @@ const Checkout = () => {
             });
 
             if (response.status === 201) {
-                await fetchCart();
+                isOrderPlacedRef.current = true;
+            await fetchCart();
                 clearCheckoutStorage(); // Clear saved checkout state on success
                 showModal({
                     title: 'Order Placed!',
@@ -567,6 +646,12 @@ const Checkout = () => {
                             </div>
                             {shippingError && (
                                 <p className="text-xs text-red-500 text-right">{shippingError}</p>
+                            )}
+                            {roundOff !== 0 && (
+                                <div className="flex justify-between text-sm text-gray-500">
+                                    <span>Round Off</span>
+                                    <span>{roundOff > 0 ? `+ ₹ ${roundOff}` : `- ₹ ${Math.abs(roundOff)}`}</span>
+                                </div>
                             )}
                             <div className="border-t border-gray-100 pt-4 flex justify-between text-lg font-bold text-gray-900">
                                 <span>Total</span>

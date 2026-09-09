@@ -1,4 +1,4 @@
-import { createContext, useState, useContext } from 'react';
+import { createContext, useState, useContext, useCallback } from 'react';
 
 const ModalContext = createContext();
 
@@ -6,100 +6,196 @@ export const useModal = () => useContext(ModalContext);
 
 export const ModalProvider = ({ children }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const [modalContent, setModalContent] = useState({
+    const [modalConfig, setModalConfig] = useState({
         title: '',
         message: '',
-        type: 'info', // info, success, warning, error
-        onConfirm: null,
-        onCancel: null,
+        type: 'info', // 'success' | 'error' | 'warning' | 'info' | 'danger'
         confirmText: 'OK',
         cancelText: 'Cancel',
-        showCancel: false
+        showCancel: false,
+        isDanger: false,
+        onConfirm: null,
+        onCancel: null,
+        resolvePromise: null,
     });
 
-    const showModal = (content) => {
-        setModalContent({
-            title: content.title || '',
-            message: content.message || '',
-            type: content.type || 'info',
-            onConfirm: content.onConfirm || null,
-            onCancel: content.onCancel || null,
-            confirmText: content.confirmText || 'OK',
-            cancelText: content.cancelText || 'Cancel',
-            showCancel: content.showCancel || false
+    const showModal = useCallback((config) => {
+        return new Promise((resolve) => {
+            setModalConfig({
+                title: config.title || (config.type === 'error' ? 'Error' : config.type === 'success' ? 'Success' : config.type === 'warning' ? 'Warning' : 'Notification'),
+                message: config.message || (typeof config === 'string' ? config : ''),
+                type: config.type || 'info',
+                confirmText: config.confirmText || 'OK',
+                cancelText: config.cancelText || 'Cancel',
+                showCancel: config.showCancel || false,
+                isDanger: config.isDanger || config.type === 'danger',
+                onConfirm: config.onConfirm || null,
+                onCancel: config.onCancel || null,
+                resolvePromise: resolve,
+            });
+            setIsOpen(true);
         });
-        setIsOpen(true);
-    };
+    }, []);
 
-    const hideModal = () => {
+    const showAlert = useCallback((message, title = '', type = 'info') => {
+        const config = typeof message === 'object' 
+            ? message 
+            : { message, title, type };
+        return showModal({ ...config, showCancel: false });
+    }, [showModal]);
+
+    const showConfirm = useCallback((config) => {
+        const modalProps = typeof config === 'string'
+            ? { message: config, title: 'Confirm Action', showCancel: true }
+            : { title: 'Confirm Action', showCancel: true, ...config };
+        return showModal(modalProps);
+    }, [showModal]);
+
+    const hideModal = useCallback(() => {
         setIsOpen(false);
-        // Reset content after transition ideally, but for now just close
-    };
+    }, []);
 
     return (
-        <ModalContext.Provider value={{ isOpen, modalContent, showModal, hideModal }}>
+        <ModalContext.Provider value={{ isOpen, modalConfig, showModal, showAlert, showConfirm, hideModal }}>
             {children}
-            {/* We will render the Modal component here or in a separate GlobalModal component */}
             <GlobalModal />
         </ModalContext.Provider>
     );
 };
 
-// Internal Modal Component
+// Custom UI/UX Modal Component
 const GlobalModal = () => {
-    const { isOpen, modalContent, hideModal } = useModal();
+    const { isOpen, modalConfig, hideModal } = useModal();
 
     if (!isOpen) return null;
 
-    const { title, message, type, onConfirm, onCancel, confirmText, cancelText, showCancel } = modalContent;
+    const {
+        title,
+        message,
+        type,
+        confirmText,
+        cancelText,
+        showCancel,
+        isDanger,
+        onConfirm,
+        onCancel,
+        resolvePromise,
+    } = modalConfig;
 
     const handleConfirm = () => {
         if (onConfirm) onConfirm();
+        if (resolvePromise) resolvePromise(true);
         hideModal();
     };
 
     const handleCancel = () => {
         if (onCancel) onCancel();
+        if (resolvePromise) resolvePromise(false);
         hideModal();
     };
 
+    // Header badge styles & icons
+    const getTypeStyles = () => {
+        switch (type) {
+            case 'success':
+                return {
+                    badgeBg: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+                    btnBg: 'bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500',
+                    icon: (
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 flex-shrink-0">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                            </svg>
+                        </div>
+                    )
+                };
+            case 'error':
+            case 'danger':
+                return {
+                    badgeBg: 'bg-red-100 text-red-800 border-red-200',
+                    btnBg: 'bg-guild-red hover:bg-red-800 text-white focus:ring-guild-red',
+                    icon: (
+                        <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-600 flex-shrink-0">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                    )
+                };
+            case 'warning':
+                return {
+                    badgeBg: 'bg-amber-100 text-amber-800 border-amber-200',
+                    btnBg: 'bg-amber-600 hover:bg-amber-700 text-white focus:ring-amber-500',
+                    icon: (
+                        <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center text-amber-600 flex-shrink-0">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    )
+                };
+            default:
+                return {
+                    badgeBg: 'bg-blue-100 text-blue-800 border-blue-200',
+                    btnBg: 'bg-guild-black hover:bg-gray-800 text-white focus:ring-gray-900',
+                    icon: (
+                        <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                    )
+                };
+        }
+    };
+
+    const typeStyles = getTypeStyles();
+
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            {/* Backdrop */}
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 overflow-y-auto">
+            {/* Backdrop with Blur */}
             <div
-                className="fixed inset-0 bg-black opacity-50 transition-opacity"
+                className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity animate-fade-in"
                 onClick={handleCancel}
             ></div>
 
-            {/* Modal */}
-            <div className="bg-white rounded-lg shadow-xl transform transition-all sm:max-w-lg w-full z-10 overflow-hidden animate-bounce-in-down">
-                {/* Header */}
-                <div className="flex justify-between items-center bg-guild-black px-6 py-4 border-b border-guild-red border-opacity-20">
-                    <h3 className="text-xl font-bold text-guild-white" id="modal-title">
-                        {title}
-                    </h3>
-                    {!showCancel && (
-                        <button onClick={hideModal} className="text-guild-white hover:text-gray-300 focus:outline-none">
-                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                            </svg>
-                        </button>
-                    )}
+            {/* Modal Container */}
+            <div className="relative bg-white rounded-xl shadow-2xl transform transition-all sm:max-w-lg w-full z-10 overflow-hidden border border-gray-100 my-8">
+                {/* Header Bar */}
+                <div className="bg-guild-black px-6 py-4 flex justify-between items-center border-b border-gray-800">
+                    <div className="flex items-center gap-3">
+                        <span className="w-2.5 h-2.5 rounded-full bg-guild-red animate-pulse"></span>
+                        <h3 className="text-lg font-bold text-white tracking-wide">
+                            {title}
+                        </h3>
+                    </div>
+                    <button
+                        onClick={handleCancel}
+                        className="text-gray-400 hover:text-white transition-colors p-1 rounded-lg focus:outline-none"
+                        aria-label="Close modal"
+                    >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
-                {/* Body */}
-                <div className="bg-guild-cream px-6 py-6">
-                    <p className="text-guild-black text-base">
-                        {message}
-                    </p>
+                {/* Body Content */}
+                <div className="p-6 bg-white flex items-start gap-4">
+                    {typeStyles.icon}
+                    <div className="flex-1 min-w-0">
+                        <div className="text-gray-700 text-sm sm:text-base leading-relaxed whitespace-pre-line font-medium">
+                            {message}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Footer */}
-                <div className="bg-guild-cream px-6 py-4 flex justify-end gap-3 border-t border-gray-200">
+                {/* Footer Controls */}
+                <div className="bg-gray-50 px-6 py-4 flex flex-col-reverse sm:flex-row justify-end gap-3 border-t border-gray-100">
                     {showCancel && (
                         <button
                             type="button"
-                            className="inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-guild-red sm:text-sm"
+                            className="w-full sm:w-auto inline-flex justify-center rounded-lg border border-gray-300 shadow-xs px-5 py-2.5 bg-white text-sm font-semibold text-gray-700 hover:bg-gray-100 focus:outline-none transition-colors"
                             onClick={handleCancel}
                         >
                             {cancelText}
@@ -107,7 +203,11 @@ const GlobalModal = () => {
                     )}
                     <button
                         type="button"
-                        className="inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-guild-red text-base font-medium text-white hover:bg-red-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-guild-red sm:text-sm"
+                        className={`w-full sm:w-auto inline-flex justify-center rounded-lg shadow-sm px-6 py-2.5 text-sm font-bold transition-all ${
+                            isDanger 
+                                ? 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500' 
+                                : typeStyles.btnBg
+                        }`}
                         onClick={handleConfirm}
                     >
                         {confirmText}
@@ -117,3 +217,5 @@ const GlobalModal = () => {
         </div>
     );
 };
+
+export default ModalProvider;

@@ -1,11 +1,14 @@
 import { useState, useEffect, useRef } from 'react';
+import { Link } from 'react-router-dom';
 import api from '../services/api';
+import { useModal } from '../context/ModalContext';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { RevenueTrendsChart, StateDistributionChart, CategorySalesChart, OrderStatusDoughnut } from '../components/AnalyticsCharts';
 
 const AdminDashboard = () => {
+    const { showAlert, showConfirm } = useModal();
     const [activeTab, setActiveTab] = useState('products');
     const [products, setProducts] = useState([]);
     const [categories, setCategories] = useState([]);
@@ -41,9 +44,16 @@ const AdminDashboard = () => {
     // Date Filters
     const [productFilters, setProductFilters] = useState({ start: '', end: '' });
     const [orderFilters, setOrderFilters] = useState({ start: '', end: '' });
+    const [preShipmentFilters, setPreShipmentFilters] = useState({ start: '', end: '' });
+    const [preShipmentSearch, setPreShipmentSearch] = useState('');
+    const [inventoryLogsFilters, setInventoryLogsFilters] = useState({ start: '', end: '' });
+    const [inventoryLogsSearch, setInventoryLogsSearch] = useState('');
 
     // Export State
     const [exportFormat, setExportFormat] = useState('');
+    const [productGender, setProductGender] = useState('men');
+    const [productSubTab, setProductSubTab] = useState('men');
+    const [zoomedImage, setZoomedImage] = useState(null);
 
     // Analytics State
     const [analyticsData, setAnalyticsData] = useState(null);
@@ -60,6 +70,28 @@ const AdminDashboard = () => {
             setAnalyticsData(res.data);
         } catch (err) {
             console.error('Error fetching analytics:', err);
+        }
+    };
+
+    const handleToggleCategoryReturnable = async (category) => {
+        try {
+            await api.patch(`/categories/${category.id}/`, {
+                is_returnable: !category.is_returnable
+            });
+            fetchCategories();
+        } catch (err) {
+            console.error('Error updating category returnable status:', err);
+        }
+    };
+
+    const handleToggleCategoryExchangeable = async (category) => {
+        try {
+            await api.patch(`/categories/${category.id}/`, {
+                is_exchangeable: !category.is_exchangeable
+            });
+            fetchCategories();
+        } catch (err) {
+            console.error('Error updating category exchangeable status:', err);
         }
     };
 
@@ -340,10 +372,13 @@ const AdminDashboard = () => {
         }));
     };
 
-    const openAddModal = () => {
+    const openAddModal = (gender = 'men') => {
+        setProductGender(gender);
         setIsEditMode(false);
         setFormData({
             name: '', price: '', actual_price: '', cost_price: '', description: '', stock: '', sizes: 'S,M,L,XL', category: '', image: null,
+            is_returnable: true,
+            is_exchangeable: true,
             variants: [],
             hasMatchingBottom: false, matchingBottoms: [],
             linkedExistingItems: [], addedLinks: [], removedLinks: [], selectedItemToLink: ''
@@ -354,6 +389,9 @@ const AdminDashboard = () => {
     const openEditModal = (product) => {
         setIsEditMode(true);
         setCurrentProduct(product);
+        const categoryObj = categories.find(c => c.id === product.category);
+        const isWomens = categoryObj && (categoryObj.is_womens || categoryObj.name.toLowerCase().includes('women'));
+        setProductGender(isWomens ? 'women' : 'men');
         const linkedItems = [...(product.linked_bottoms || []), ...(product.linked_shirts || [])];
         setFormData({
             name: product.name,
@@ -387,6 +425,8 @@ const AdminDashboard = () => {
         shirtData.append('stock', formData.stock);
         shirtData.append('sizes', formData.sizes);
         shirtData.append('category', formData.category);
+        shirtData.append('is_returnable', formData.is_returnable);
+        shirtData.append('is_exchangeable', formData.is_exchangeable);
 
         // Sanitize variants
         const sanitizedVariants = formData.variants.map(v => ({
@@ -452,7 +492,7 @@ const AdminDashboard = () => {
                         }
 
                         if (!targetCategoryId) {
-                            alert('No valid category (Bottom/Short) found for matching item.');
+                            showAlert({ title: 'Category Required', message: 'No valid category (Bottom/Short) found for matching item.', type: 'warning' });
                             continue;
                         }
 
@@ -462,24 +502,18 @@ const AdminDashboard = () => {
                         }
 
                         let bottomId;
-                        if (bottom.id && bottom.id.toString().length < 13) { // Simple check if it's a real DB ID (not Date.now timestamp)
-                            // Update existing bottom
+                        if (bottom.id && bottom.id.toString().length < 13) {
                             await api.patch(`/products/${bottom.id}/`, bottomData, {
                                 headers: { 'Content-Type': 'multipart/form-data' }
                             });
                             bottomId = bottom.id;
                         } else {
-                            // Create new bottom
                             const bottomRes = await api.post('/products/', bottomData, {
                                 headers: { 'Content-Type': 'multipart/form-data' }
                             });
                             bottomId = bottomRes.data.id;
                         }
 
-                        // 3. Link them (Idempotent check would be good, but for now just ensure link exists)
-                        // If it's an update, the link likely exists, but no harm ensuring it.
-                        // However, to avoid duplicate errors, we might want to skip if it's an update.
-                        // Or better, use a check.
                         try {
                             await api.post('/matching-outfits/', {
                                 shirt: shirtId,
@@ -490,7 +524,7 @@ const AdminDashboard = () => {
                         }
                     }
                 } else {
-                    alert('Neither Bottom nor Short category found! Could not create matching items.');
+                    showAlert({ title: 'Category Missing', message: 'Neither Bottom nor Short category found! Could not create matching items.', type: 'warning' });
                 }
             }
 
@@ -524,20 +558,29 @@ const AdminDashboard = () => {
 
             setShowModal(false);
             fetchProducts();
-            alert(isEditMode ? 'Product Updated!' : 'Product Created!');
+            showAlert({ title: 'Success', message: isEditMode ? 'Product Updated Successfully!' : 'Product Created Successfully!', type: 'success' });
         } catch (err) {
             console.error('Operation failed:', err);
-            alert('Failed to save product. Check console for details.');
+            showAlert({ title: 'Save Failed', message: 'Failed to save product. Check console for details.', type: 'error' });
         }
     };
 
     const handleDelete = async (id) => {
-        if (window.confirm('Are you sure you want to delete this product?')) {
+        const confirmed = await showConfirm({
+            title: 'Delete Product',
+            message: 'Are you sure you want to delete this product? This action cannot be undone.',
+            type: 'danger',
+            confirmText: 'Delete Product',
+            isDanger: true,
+        });
+        if (confirmed) {
             try {
                 await api.delete(`/products/${id}/`);
                 fetchProducts();
+                showAlert({ title: 'Product Deleted', message: 'Product removed successfully.', type: 'success' });
             } catch (err) {
                 console.error('Delete failed:', err);
+                showAlert({ title: 'Delete Failed', message: 'Failed to delete product.', type: 'error' });
             }
         }
     };
@@ -569,14 +612,20 @@ const AdminDashboard = () => {
     };
 
     const handleShipOrder = async (orderId) => {
-        if (!window.confirm('Are you sure you want to ship this order with Shiprocket?')) return;
+        const confirmed = await showConfirm({
+            title: 'Ship Order',
+            message: 'Are you sure you want to ship this order with Shiprocket?',
+            type: 'info',
+            confirmText: 'Ship Order'
+        });
+        if (!confirmed) return;
         try {
             const res = await api.post(`/orders/${orderId}/ship/`);
-            alert(res.data.status || 'Order Shipped!');
+            showAlert({ title: 'Order Shipped', message: res.data.status || 'Order Shipped Successfully!', type: 'success' });
             fetchOrders();
         } catch (err) {
             console.error('Shipping failed:', err);
-            alert('Failed to ship order. Check console/backend logs.');
+            showAlert({ title: 'Shipping Failed', message: 'Failed to ship order. Check console/backend logs.', type: 'error' });
         }
     };
 
@@ -593,7 +642,7 @@ const AdminDashboard = () => {
     const handleUploadProof = async (orderItemId) => {
         const file = proofFiles[orderItemId];
         if (!file) {
-            alert("Select a file first.");
+            showAlert({ title: 'No File Selected', message: 'Select a file first.', type: 'warning' });
             return;
         }
 
@@ -607,7 +656,7 @@ const AdminDashboard = () => {
             await api.post('/shipment-proofs/', formData, {
                 headers: { "Content-Type": "multipart/form-data" }
             });
-            alert("Proof uploaded successfully.");
+            showAlert({ title: 'Proof Uploaded', message: 'Shipment proof uploaded successfully.', type: 'success' });
             setProofFiles(prev => {
                 const updated = { ...prev };
                 delete updated[orderItemId];
@@ -618,22 +667,30 @@ const AdminDashboard = () => {
             setSelectedOrder(updatedOrderRes.data);
         } catch (err) {
             console.error(err);
-            alert("Failed to upload proof.");
+            showAlert({ title: 'Upload Failed', message: 'Failed to upload proof.', type: 'error' });
         } finally {
             setUploadingItemId(null);
         }
     };
 
     const handleDeleteProof = async (proofId) => {
-        if (!window.confirm("Delete this proof?")) return;
+        const confirmed = await showConfirm({
+            title: 'Delete Proof',
+            message: 'Are you sure you want to delete this shipment proof?',
+            type: 'danger',
+            confirmText: 'Delete Proof',
+            isDanger: true
+        });
+        if (!confirmed) return;
         try {
             await api.delete(`/shipment-proofs/${proofId}/`);
             fetchOrders();
             const updatedOrderRes = await api.get(`/orders/${selectedOrder.id}/`);
             setSelectedOrder(updatedOrderRes.data);
+            showAlert({ title: 'Proof Deleted', message: 'Shipment proof deleted successfully.', type: 'success' });
         } catch (err) {
             console.error(err);
-            alert("Failed to delete proof.");
+            showAlert({ title: 'Delete Failed', message: 'Failed to delete proof.', type: 'error' });
         }
     };
 
@@ -641,18 +698,58 @@ const AdminDashboard = () => {
         const order = selectedOrder;
         const missing = order.items.some(item => !item.shipment_proofs || item.shipment_proofs.length === 0);
         if (missing) {
-            alert("Please upload at least one proof for all items before packing.");
+            showAlert({ title: 'Missing Proofs', message: 'Please upload at least one proof for all items before packing.', type: 'warning' });
             return;
         }
 
         try {
             await api.patch(`/orders/${orderId}/`, { status: 'packed' });
-            alert("Order marked as packed.");
+            showAlert({ title: 'Order Packed', message: 'Order marked as packed successfully.', type: 'success' });
             fetchOrders();
             setIsOrderModalOpen(false);
         } catch (err) {
             console.error(err);
-            alert(err.response?.data?.error || "Failed to mark as packed.");
+            showAlert({ title: 'Packing Failed', message: err.response?.data?.error || 'Failed to mark as packed.', type: 'error' });
+        }
+    };
+
+    const handleCancelOrder = async (orderId, reason) => {
+        try {
+            await api.post(`/orders/${orderId}/cancel/`, { reason });
+            showAlert({ title: 'Order Cancelled', message: 'Order cancelled successfully!', type: 'success' });
+            fetchOrders();
+            setIsOrderModalOpen(false);
+        } catch (err) {
+            console.error(err);
+            showAlert({ title: 'Cancellation Failed', message: err.response?.data?.error || 'Failed to cancel order.', type: 'error' });
+        }
+    };
+
+    const handleRefundOrder = async (orderId) => {
+        try {
+            const response = await api.post(`/orders/${orderId}/refund/`);
+            showAlert({
+                title: 'Refund Processed',
+                message: `Refund processed successfully!\nRefund ID: ${response.data.refund_transaction_id}\nRefund Amount: ₹${response.data.refund_amount}`,
+                type: 'success'
+            });
+            fetchOrders();
+            setIsOrderModalOpen(false);
+        } catch (err) {
+            console.error(err);
+            showAlert({ title: 'Refund Failed', message: err.response?.data?.error || 'Failed to process refund.', type: 'error' });
+        }
+    };
+
+    // Inventory Logs State
+    const [inventoryLogs, setInventoryLogs] = useState([]);
+
+    const fetchInventoryLogs = async () => {
+        try {
+            const res = await api.get('/inventory-logs/');
+            setInventoryLogs(res.data);
+        } catch (err) {
+            console.error('Error fetching inventory logs:', err);
         }
     };
 
@@ -670,19 +767,154 @@ const AdminDashboard = () => {
     };
 
     const handleResolveQuery = async (queryId) => {
-        if (!window.confirm('Are you sure you want to mark this query as resolved?')) return;
+        const confirmed = await showConfirm({
+            title: 'Resolve Query',
+            message: 'Are you sure you want to mark this customer query as resolved?',
+            type: 'info',
+            confirmText: 'Resolve Query'
+        });
+        if (!confirmed) return;
         try {
             await api.patch(`/queries/${queryId}/`, { is_resolved: true });
             fetchQueries();
+            showAlert({ title: 'Query Resolved', message: 'Customer query marked as resolved.', type: 'success' });
         } catch (err) {
             console.error('Resolve failed:', err);
-            alert('Failed to resolve query.');
+            showAlert({ title: 'Resolution Failed', message: 'Failed to resolve query.', type: 'error' });
         }
     };
 
     // Returns State
+    
+    // Category Modal State
+    const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+    const [editingCategory, setEditingCategory] = useState(null);
+    const [categoryFormData, setCategoryFormData] = useState({
+        name: "",
+        is_womens: false,
+        is_published: true,
+        is_returnable: true,
+        is_exchangeable: true
+    });
+
+    const openAddCategoryModal = () => {
+        setEditingCategory(null);
+        setCategoryFormData({
+            name: "",
+            is_womens: false,
+            is_published: true,
+            is_returnable: true,
+            is_exchangeable: true
+        });
+        setCategoryModalOpen(true);
+    };
+
+    const openEditCategoryModal = (cat) => {
+        setEditingCategory(cat);
+        setCategoryFormData({
+            name: cat.name,
+            is_womens: cat.is_womens || false,
+            is_published: cat.is_published !== false,
+            is_returnable: cat.is_returnable !== false,
+            is_exchangeable: cat.is_exchangeable !== false
+        });
+        setCategoryModalOpen(true);
+    };
+
+    const handleSaveCategory = async (e) => {
+        e.preventDefault();
+        try {
+            if (editingCategory) {
+                await api.patch(`/categories/${editingCategory.id}/`, categoryFormData);
+                showAlert({ title: 'Category Updated', message: 'Category updated successfully!', type: 'success' });
+            } else {
+                const baseSlug = categoryFormData.name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)+/g, "");
+                const uniqueSlug = `${baseSlug || 'cat'}-${Date.now().toString().slice(-4)}`;
+                await api.post("/categories/", {
+                    ...categoryFormData,
+                    slug: uniqueSlug
+                });
+                showAlert({ title: 'Category Created', message: 'Category created successfully!', type: 'success' });
+            }
+            setCategoryModalOpen(false);
+            fetchCategories();
+            fetchProducts();
+        } catch (err) {
+            console.error("Failed to save category", err);
+            showAlert({ title: 'Save Failed', message: err.response?.data?.error || err.response?.data?.slug?.[0] || 'Failed to save category.', type: 'error' });
+        }
+    };
+
+    const handleToggleCategoryField = async (cat, field) => {
+        try {
+            await api.patch(`/categories/${cat.id}/`, { [field]: !cat[field] });
+            fetchCategories();
+            fetchProducts();
+        } catch (err) {
+            console.error("Failed to toggle category field", err);
+            showAlert({ title: 'Update Failed', message: 'Failed to update category.', type: 'error' });
+        }
+    };
+
+    const handleDeleteCategory = async (catId) => {
+        const confirmed = await showConfirm({
+            title: 'Delete Category',
+            message: 'Are you sure you want to delete this category? All products linked to this category will also be deleted.',
+            type: 'danger',
+            confirmText: 'Delete Category',
+            isDanger: true
+        });
+        if (!confirmed) return;
+        try {
+            await api.delete(`/categories/${catId}/`);
+            showAlert({ title: 'Category Deleted', message: 'Category deleted successfully!', type: 'success' });
+            fetchCategories();
+            fetchProducts();
+        } catch (err) {
+            console.error("Failed to delete category", err);
+            showAlert({ title: 'Delete Failed', message: err.response?.data?.error || err.message || 'Failed to delete category.', type: 'error' });
+        }
+    };
+
+    // Return Policy State
+    const [policyFormData, setPolicyFormData] = useState({
+        return_window_days: 7,
+        exchange_window_days: 7,
+        reasons: 'Size Issue, Damaged Product, Do Not Like It, Wrong Item, Other',
+        is_active: true
+    });
+
+    const fetchPolicy = async () => {
+        try {
+            const res = await api.get('/return-policy-configs/');
+            if (res.data) {
+                setPolicyFormData({
+                    return_window_days: res.data.return_window_days || 7,
+                    exchange_window_days: res.data.exchange_window_days || 7,
+                    reasons: res.data.reasons || 'Size Issue, Damaged Product, Do Not Like It, Wrong Item, Other',
+                    is_active: res.data.is_active !== false
+                });
+            }
+        } catch (err) {
+            console.error('Error fetching policy config:', err);
+        }
+    };
+
+    const handleSavePolicy = async (e) => {
+        e.preventDefault();
+        try {
+            await api.post('/return-policy-configs/', policyFormData);
+            showAlert({ title: 'Policy Saved', message: 'Return & Exchange Policy configurations saved successfully!', type: 'success' });
+            fetchPolicy();
+        } catch (err) {
+            console.error('Failed to save policy config:', err);
+            showAlert({ title: 'Save Failed', message: err.response?.data?.error || 'Failed to save policy configuration.', type: 'error' });
+        }
+    };
+
     const [returns, setReturns] = useState([]);
     const [returnsFilters, setReturnsFilters] = useState({ start: '', end: '' });
+    const [returnsSearch, setReturnsSearch] = useState('');
 
     // Return Review Modal State
     const [selectedReturnForReview, setSelectedReturnForReview] = useState(null);
@@ -703,7 +935,6 @@ const AdminDashboard = () => {
 
     const fetchReturns = async () => {
         try {
-            // Need to import returnAPI at the top, or just use api directly since we are admin
             const res = await api.get('/returns/');
             setReturns(res.data);
         } catch (err) {
@@ -712,40 +943,141 @@ const AdminDashboard = () => {
     };
 
     const handleApproveReturn = async (returnId) => {
-        if (!window.confirm('Are you sure you want to approve this return? This will mark the order as Returned.')) return;
+        const confirmed = await showConfirm({
+            title: 'Approve Return',
+            message: 'Are you sure you want to approve this return? This will mark the order as Returned.',
+            type: 'info',
+            confirmText: 'Approve Return'
+        });
+        if (!confirmed) return;
         try {
             const res = await api.post(`/returns/${returnId}/approve/`);
-            alert(res.data.status || 'Return Approved!');
-            fetchReturns(); // Re-fetch returns
-            fetchOrders(); // Re-fetch orders to update counts logic if needed
+            showAlert({ title: 'Return Approved', message: res.data.status || 'Return Approved!', type: 'success' });
+            fetchReturns();
+            fetchOrders();
         } catch (err) {
             console.error('Approve failed:', err);
-            alert('Failed to approve return.');
+            showAlert({ title: 'Approval Failed', message: 'Failed to approve return.', type: 'error' });
+        }
+    };
+
+    const handleApproveRequest = async (requestId, isLocal = false) => {
+        const confirmed = await showConfirm({
+            title: 'Approve Return Request',
+            message: `Are you sure you want to approve Return Request #${requestId}?`,
+            type: 'info',
+            confirmText: 'Approve Request'
+        });
+        if (!confirmed) return;
+        try {
+            const res = await api.post(`/returns/${requestId}/approve/`, { is_local: isLocal });
+            showAlert({ title: 'Request Approved', message: res.data.status || res.data.message || 'Request Approved!', type: 'success' });
+            fetchReturns();
+            fetchOrders();
+        } catch (err) {
+            console.error('Approve request failed:', err);
+            showAlert({ title: 'Approval Failed', message: err.response?.data?.error || err.message || 'Failed to approve request.', type: 'error' });
         }
     };
 
     const handleRejectReturn = async (returnId) => {
-        if (!window.confirm('Are you sure you want to reject this return?')) return;
+        const confirmed = await showConfirm({
+            title: 'Reject Return',
+            message: 'Are you sure you want to reject this return?',
+            type: 'danger',
+            confirmText: 'Reject Return',
+            isDanger: true
+        });
+        if (!confirmed) return;
         try {
             const res = await api.post(`/returns/${returnId}/reject/`);
-            alert(res.data.status || 'Return Rejected!');
+            showAlert({ title: 'Return Rejected', message: res.data.status || 'Return Rejected!', type: 'success' });
             fetchReturns();
             fetchOrders();
         } catch (err) {
             console.error('Reject failed:', err);
-            alert('Failed to reject return.');
+            showAlert({ title: 'Rejection Failed', message: 'Failed to reject return.', type: 'error' });
+        }
+    };
+
+    const handleRejectRequest = async (requestId) => {
+        const reason = prompt("Please enter the reason for rejecting this return request:");
+        if (reason === null) return;
+        try {
+            const res = await api.post(`/returns/${requestId}/reject/`, { rejection_reason: reason });
+            showAlert({ title: 'Request Rejected', message: res.data.status || res.data.message || 'Request Rejected!', type: 'success' });
+            fetchReturns();
+            fetchOrders();
+        } catch (err) {
+            console.error('Reject request failed:', err);
+            showAlert({ title: 'Rejection Failed', message: err.response?.data?.error || err.message || 'Failed to reject request.', type: 'error' });
+        }
+    };
+
+    const handleTrackRequest = async (requestId) => {
+        try {
+            const res = await api.get(`/returns/${requestId}/track/`);
+            showAlert({
+                title: `Tracking Request #${requestId}`,
+                message: `Status: ${res.data.status || 'In Transit'}\nAWB: ${res.data.awb_code || 'N/A'}\nDetails: ${JSON.stringify(res.data.tracking_details || res.data)}`,
+                type: 'info'
+            });
+        } catch (err) {
+            console.error('Track request failed:', err);
+            showAlert({ title: 'Tracking Unavailable', message: err.response?.data?.error || err.message || 'Tracking information unavailable.', type: 'error' });
+        }
+    };
+
+    const handleProcessRefund = async (requestId) => {
+        const confirmed = await showConfirm({
+            title: 'Process Refund',
+            message: `Are you sure you want to process refund for Return Request #${requestId}?`,
+            type: 'info',
+            confirmText: 'Process Refund'
+        });
+        if (!confirmed) return;
+        try {
+            const res = await api.post(`/returns/${requestId}/process-refund/`);
+            showAlert({ title: 'Refund Processed', message: res.data.status || res.data.message || 'Refund processed successfully!', type: 'success' });
+            fetchReturns();
+            fetchOrders();
+        } catch (err) {
+            console.error('Process refund failed:', err);
+            showAlert({ title: 'Refund Failed', message: err.response?.data?.error || err.message || 'Failed to process refund.', type: 'error' });
+        }
+    };
+
+    const handleShipReplacement = async (requestId) => {
+        const confirmed = await showConfirm({
+            title: 'Ship Replacement',
+            message: `Are you sure you want to mark replacement as shipped for Request #${requestId}?`,
+            type: 'info',
+            confirmText: 'Ship Replacement'
+        });
+        if (!confirmed) return;
+        try {
+            const res = await api.post(`/returns/${requestId}/ship-replacement/`, {});
+            showAlert({ title: 'Replacement Shipped', message: res.data.status || res.data.message || 'Replacement marked as shipped successfully!', type: 'success' });
+            fetchReturns();
+            fetchOrders();
+        } catch (err) {
+            console.error('Ship replacement failed:', err);
+            showAlert({ title: 'Shipment Failed', message: err.response?.data?.error || err.message || 'Failed to ship replacement.', type: 'error' });
         }
     };
 
     useEffect(() => {
-        if (activeTab === 'orders') fetchOrders();
+        if (activeTab === 'categories') fetchCategories();
+        if (activeTab === 'orders' || activeTab === 'pre_shipment') fetchOrders();
         if (activeTab === 'returns') fetchReturns();
+        if (activeTab === 'policy') fetchPolicy();
         if (activeTab === 'queries') fetchQueries();
     }, [activeTab]);
 
     // Filtering Logic
     const getFilteredData = (data, dates) => {
-        if (!dates.start && !dates.end) return data;
+        if (!data || !Array.isArray(data)) return [];
+        if (!dates || (!dates.start && !dates.end)) return data;
 
         const start = dates.start ? new Date(dates.start) : new Date('1970-01-01');
         const end = dates.end ? new Date(dates.end) : new Date();
@@ -872,13 +1204,39 @@ const AdminDashboard = () => {
 
     return (
         <div className="space-y-6">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <h1 className="text-3xl font-bold text-gray-800">Store Owner Dashboard</h1>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b pb-4">
+                <div className="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-start">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-gray-800">Store Owner Dashboard</h1>
+                    <Link 
+                        to="/" 
+                        className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium text-gray-700 hover:text-guild-red bg-white border border-gray-300 hover:border-guild-red px-3 py-1.5 rounded-lg transition-all shadow-sm whitespace-nowrap"
+                        title="Return to Customer Shop"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        <span>Shop Store</span>
+                    </Link>
+                </div>
                 {activeTab === 'products' && (
+                    <div className="flex gap-2 w-full md:w-auto">
+                        <button
+                            onClick={() => openAddModal('men')}
+                            className="bg-guild-red text-white px-3 py-2 text-sm rounded-lg hover:bg-red-800 transition-colors flex-1 md:flex-none">
+                            + Add Men's Product
+                        </button>
+                        <button
+                            onClick={() => openAddModal('women')}
+                            className="bg-purple-700 text-white px-3 py-2 text-sm rounded-lg hover:bg-purple-800 transition-colors flex-1 md:flex-none">
+                            + Add Women's Product
+                        </button>
+                    </div>
+                )}
+                {activeTab === 'categories' && (
                     <button
-                        onClick={openAddModal}
+                        onClick={openAddCategoryModal}
                         className="bg-guild-red text-white px-3 py-2 text-sm md:px-4 md:py-2 md:text-base rounded-lg hover:bg-red-800 transition-colors w-full md:w-auto">
-                        Add Product
+                        + Add Custom Category
                     </button>
                 )}
             </div>
@@ -893,6 +1251,16 @@ const AdminDashboard = () => {
                             onClick={() => setActiveTab('products')}
                         >
                             Products
+                        </button>
+                        <button
+                            className={`py-2 px-4 font-medium whitespace-nowrap ${activeTab === 'categories' ? 'text-guild-red border-b-2 border-guild-red' : 'text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setActiveTab('categories')}>
+                            Categories
+                        </button>
+                        <button
+                            className={`py-2 px-4 font-medium whitespace-nowrap ${activeTab === 'policy' ? 'text-guild-red border-b-2 border-guild-red' : 'text-gray-500 hover:text-gray-700'}`}
+                            onClick={() => setActiveTab('policy')}>
+                            Return Policy
                         </button>
                         <button
                             className={`py-2 px-4 font-medium whitespace-nowrap ${activeTab === 'orders' ? 'text-guild-red border-b-2 border-guild-red' : 'text-gray-500 hover:text-gray-700'}`}
@@ -987,22 +1355,145 @@ const AdminDashboard = () => {
                 </div>
             </div>
 
-            {/* Product Table */}
-            {activeTab === 'products' && (
+            
+            {/* Categories Table View */}
+            {activeTab === 'categories' && (
                 <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+                    <div className="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                        <div>
+                            <h2 className="text-lg font-bold text-gray-800">Custom Product Categories</h2>
+                            <p className="text-xs text-gray-500">Manage categories, section tags (Women/Men), visibility, and default return/exchange rules.</p>
+                        </div>
+                        <button
+                            onClick={openAddCategoryModal}
+                            className="bg-guild-red text-white text-xs px-3 py-2 rounded hover:bg-red-800 transition-colors"
+                        >
+                            + Add Category
+                        </button>
+                    </div>
                     <div className="overflow-x-auto">
                         <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
+                            <thead className="bg-gray-100">
                                 <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selling Price</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">ID</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Category Name</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Slug</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Section</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Visibility</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Returnable</th>
+                                    <th className="px-6 py-3 text-left text-xs font-semibold text-gray-600 uppercase">Exchangeable</th>
+                                    <th className="px-6 py-3 text-center text-xs font-semibold text-gray-600 uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredProducts.map((product) => (
+                                {categories.map(cat => (
+                                    <tr key={cat.id} className="hover:bg-gray-50">
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">#{cat.id}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{cat.name}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-mono text-gray-500">{cat.slug}</td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${cat.is_womens ? "bg-purple-100 text-purple-800" : "bg-blue-100 text-blue-800"}`}>
+                                                {cat.is_womens ? "Women's Collection" : "Men's Collection"}
+                                            </span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <button
+                                                onClick={() => handleToggleCategoryField(cat, "is_published")}
+                                                className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cat.is_published !== false ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-600"}`}
+                                            >
+                                                {cat.is_published !== false ? "Published" : "Hidden"}
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <button
+                                                onClick={() => handleToggleCategoryField(cat, "is_returnable")}
+                                                className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cat.is_returnable !== false ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"}`}
+                                            >
+                                                {cat.is_returnable !== false ? "Yes" : "No"}
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                            <button
+                                                onClick={() => handleToggleCategoryField(cat, "is_exchangeable")}
+                                                className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cat.is_exchangeable !== false ? "bg-blue-100 text-blue-800" : "bg-orange-100 text-orange-800"}`}
+                                            >
+                                                {cat.is_exchangeable !== false ? "Yes" : "No"}
+                                            </button>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-center space-x-3">
+                                            <button
+                                                onClick={() => openEditCategoryModal(cat)}
+                                                className="text-blue-600 hover:text-blue-900 font-medium"
+                                            >
+                                                Edit
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteCategory(cat.id)}
+                                                className="text-red-600 hover:text-red-900 font-medium"
+                                            >
+                                                Delete
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                                {categories.length === 0 && (
+                                    <tr>
+                                        <td colSpan="8" className="text-center py-8 text-gray-500">
+                                            No categories found. Click "+ Add Category" to create one.
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Product Table */}
+            {activeTab === 'products' && (
+                <div className="space-y-4">
+                    {/* Men / Women Sub-tabs */}
+                    <div className="flex space-x-2 border-b border-gray-200 pb-2">
+                        <button
+                            className={`py-2 px-6 font-bold text-sm rounded-lg transition-all ${
+                                productSubTab === 'men'
+                                    ? 'bg-guild-red text-white shadow-sm'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                            onClick={() => setProductSubTab('men')}
+                        >
+                            Men's Collection
+                        </button>
+                        <button
+                            className={`py-2 px-6 font-bold text-sm rounded-lg transition-all ${
+                                productSubTab === 'women'
+                                    ? 'bg-purple-700 text-white shadow-sm'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            }`}
+                            onClick={() => setProductSubTab('women')}
+                        >
+                            Women's Collection
+                        </button>
+                    </div>
+
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Selling Price</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Stock</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Added</th>
+                                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200">
+                                    {filteredProducts.filter(product => {
+                                        const catObj = categories.find(c => c.id === product.category);
+                                        const isWomens = catObj ? (catObj.is_womens || catObj.name.toLowerCase().includes('women')) : false;
+                                        return productSubTab === 'women' ? isWomens : !isWomens;
+                                    }).map((product) => (
                                     <tr key={product.id}>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{product.name}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{product.price}</td>
@@ -1026,6 +1517,7 @@ const AdminDashboard = () => {
                             </tbody>
                         </table>
                     </div>
+                </div>
                 </div>
             )}
 
@@ -1061,7 +1553,7 @@ const AdminDashboard = () => {
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{order.total_price}</td>
                                         <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${order.status === 'placed' ? 'bg-yellow-100 text-yellow-800' : order.status === 'shipped' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`}>
+                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${order.status === 'placed' ? 'bg-yellow-100 text-yellow-800' : order.status === 'shipped' ? 'bg-blue-100 text-blue-800' : order.status === 'cancelled' || order.status === 'refunded' ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'}`}>
                                                 {order.status}
                                             </span>
                                         </td>
@@ -1103,72 +1595,242 @@ const AdminDashboard = () => {
 
             {/* Returns Table */}
             {activeTab === 'returns' && (
-                <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="min-w-full divide-y divide-gray-200">
-                            <thead className="bg-gray-50">
-                                <tr>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Req ID</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order ID</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Reason</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Proof</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="bg-white divide-y divide-gray-200">
-                                {filteredReturns.map((returnReq) => (
-                                    <tr key={returnReq.id}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{returnReq.id}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">#{returnReq.order}</td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{returnReq.reason.replace('_', ' ')}</td>
-                                        <td className="px-6 py-4 text-sm text-gray-500 max-w-xs truncate" title={returnReq.description}>
-                                            {returnReq.description || 'N/A'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {returnReq.image ? (
-                                                <a href={`${import.meta.env.VITE_MEDIA_URL || 'http://localhost:8000'}${returnReq.image}`} target="_blank" rel="noopener noreferrer" className="text-guild-red hover:underline flex items-center gap-1">
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                                    View
-                                                </a>
-                                            ) : (
-                                                <span className="text-gray-400">None</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
-                                                ${returnReq.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                    returnReq.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                                {returnReq.status.charAt(0).toUpperCase() + returnReq.status.slice(1)}
-                                            </span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {new Date(returnReq.created_at).toLocaleDateString()}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                            {returnReq.status === 'pending' && (
-                                                <button
-                                                    onClick={() => openReviewModal(returnReq)}
-                                                    className="bg-indigo-600 text-white px-3 py-1 rounded text-xs hover:bg-indigo-800 font-medium whitespace-nowrap"
-                                                >
-                                                    Review Request
-                                                </button>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                                {filteredReturns.length === 0 && (
-                                    <tr>
-                                        <td colSpan="8" className="px-6 py-4 text-center text-gray-500">
-                                            No return requests found.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                <div className="space-y-6">
+                    <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
+                        <div className="w-full md:w-1/3">
+                            <input
+                                type="text"
+                                placeholder="Search by Request ID, Order ID, User..."
+                                value={returnsSearch}
+                                onChange={(e) => setReturnsSearch(e.target.value)}
+                                className="w-full border border-gray-300 rounded-lg p-2 text-sm focus:ring-guild-red focus:border-guild-red"
+                            />
+                        </div>
+                        <div className="text-xs text-gray-500 font-bold uppercase">
+                            Total Requests: {filteredReturns.length}
+                        </div>
                     </div>
+
+                    <div className="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                                <thead className="bg-gray-50">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Req ID</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Order ID / User</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Requested Items</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Reverse Logistics</th>
+                                        <th className="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="bg-white divide-y divide-gray-200 text-sm">
+                                    {filteredReturns.filter(r => {
+                                        if (!returnsSearch) return true;
+                                        const term = returnsSearch.toLowerCase();
+                                        return (
+                                            r.id.toString().includes(term) ||
+                                            r.order.toString().includes(term) ||
+                                            r.user_email?.toLowerCase().includes(term) ||
+                                            r.user_username?.toLowerCase().includes(term)
+                                        );
+                                    }).map((req) => (
+                                        <tr key={req.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap font-bold text-gray-900">
+                                                #{req.id}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <div className="font-bold">Order #{req.order}</div>
+                                                <div className="text-xs text-gray-500">{req.user_username} ({req.user_email})</div>
+                                                <div className="text-[11px] text-gray-400 mt-0.5">{new Date(req.created_at).toLocaleDateString()}</div>
+                                            </td>
+                                            <td className="px-6 py-4 max-w-sm">
+                                                <div className="space-y-1">
+                                                    {req.items && req.items.length > 0 ? (
+                                                        req.items.map(item => (
+                                                            <div key={item.id} className="text-xs text-gray-800 flex items-center justify-between border-b pb-1">
+                                                                <div>
+                                                                    <span className="font-semibold">{item.product_name}</span> ({item.original_size}) &times; <span className="font-bold">{item.quantity}</span>
+                                                                    <span className="ml-2 inline-block px-1.5 py-0.25 bg-gray-100 rounded text-[9px] uppercase font-bold text-gray-600">{item.request_type}</span>
+                                                                    {item.request_type === 'exchange' && (
+                                                                        <span className="text-guild-red font-bold block">Exchange to size: {item.exchange_size}</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="text-right ml-4">
+                                                                    {item.image ? (
+                                                                        <a href={`${import.meta.env.VITE_MEDIA_URL || 'http://localhost:8000'}${item.image}`} target="_blank" rel="noopener noreferrer" className="text-guild-red hover:underline text-[10px] font-bold flex items-center gap-0.5">
+                                                                            Proof Image
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span className="text-[10px] text-gray-400">No Image</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        ))
+                                                    ) : (
+                                                        <div>
+                                                            <span className="font-semibold text-xs text-gray-800">{req.reason || "Return Requested"}</span>
+                                                            {req.description && (
+                                                                <p className="text-[11px] text-gray-500">{req.description}</p>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full uppercase tracking-wider
+                                                    ${req.status === 'requested' ? 'bg-blue-100 text-blue-800' :
+                                                      req.status === 'approved' ? 'bg-indigo-100 text-indigo-800' :
+                                                      req.status === 'pickup_scheduled' ? 'bg-yellow-100 text-yellow-800' :
+                                                      req.status === 'picked_up' ? 'bg-orange-100 text-orange-800' :
+                                                      req.status === 'refunded' ? 'bg-green-100 text-green-800' :
+                                                      req.status === 'replacement_shipped' ? 'bg-purple-100 text-purple-800' :
+                                                      req.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                                    {(req.status || 'pending').replace('_', ' ')}
+                                                </span>
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-600">
+                                                {req.awb_code ? (
+                                                    <div>
+                                                        <div>{req.courier_name}</div>
+                                                        <div className="font-mono text-gray-900 font-bold mt-0.5">{req.awb_code}</div>
+                                                    </div>
+                                                ) : (
+                                                    <span className="text-gray-400">Not assigned</span>
+                                                )}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-xs font-medium space-y-2">
+                                                {req.status === 'requested' && (
+                                                    <div className="flex flex-col gap-1.5">
+                                                        <button
+                                                            onClick={() => handleApproveRequest(req.id, false)}
+                                                            className="bg-guild-red text-white px-2 py-1 rounded hover:bg-red-800 font-bold w-full"
+                                                        >
+                                                            Approve (Shiprocket Reverse)
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleApproveRequest(req.id, true)}
+                                                            className="bg-gray-600 text-white px-2 py-1 rounded hover:bg-gray-800 font-bold w-full"
+                                                        >
+                                                            Approve (Self-Ship / Local)
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleRejectRequest(req.id)}
+                                                            className="bg-red-100 text-red-700 px-2 py-1 rounded hover:bg-red-200 font-bold w-full"
+                                                        >
+                                                            Reject Request
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {['pickup_scheduled', 'picked_up', 'in_transit'].includes(req.status) && req.awb_code && (
+                                                    <button
+                                                        onClick={() => handleTrackRequest(req.id)}
+                                                        className="bg-blue-600 text-white px-2.5 py-1 rounded hover:bg-blue-800 font-bold block w-full text-center"
+                                                    >
+                                                        Track AWB
+                                                    </button>
+                                                )}
+
+                                                {req.status === 'picked_up' && (
+                                                    <div className="flex flex-col gap-1.5">
+                                                        {req.items.some(i => i.request_type === 'return') && (
+                                                            <button
+                                                                onClick={() => handleProcessRefund(req.id)}
+                                                                className="bg-green-600 text-white px-2 py-1 rounded hover:bg-green-800 font-bold w-full text-center"
+                                                            >
+                                                                Process Refund
+                                                            </button>
+                                                        )}
+                                                        {req.items.some(i => ['exchange', 'replacement'].includes(i.request_type)) && (
+                                                            <button
+                                                                onClick={() => handleShipReplacement(req.id)}
+                                                                className="bg-purple-600 text-white px-2 py-1 rounded hover:bg-purple-800 font-bold w-full text-center"
+                                                            >
+                                                                Ship Replacement
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {!['refunded', 'completed', 'rejected'].includes(req.status) && (
+                                                    <button
+                                                        onClick={() => handleCompleteRequest(req.id)}
+                                                        className="bg-gray-200 text-gray-700 px-2 py-1 rounded hover:bg-gray-300 font-bold block w-full text-center"
+                                                    >
+                                                        Mark Completed
+                                                    </button>
+                                                )}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {filteredReturns.length === 0 && (
+                                        <tr>
+                                            <td colSpan="6" className="px-6 py-4 text-center text-gray-500">
+                                                No requests found.
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Return Policy Config Form */}
+            {activeTab === 'policy' && (
+                <div className="bg-white rounded-lg shadow border p-6 max-w-2xl">
+                    <h2 className="text-xl font-bold text-gray-800 mb-6">Global Return & Size Exchange Policy Config</h2>
+                    <form onSubmit={handleSavePolicy} className="space-y-6">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Return Eligibility Window (Days)</label>
+                            <input
+                                type="number"
+                                value={policyFormData.return_window_days}
+                                onChange={(e) => setPolicyFormData({ ...policyFormData, return_window_days: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent"
+                                required
+                                min="0"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Number of days after delivery a customer can request a refund/return.</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Exchange Eligibility Window (Days)</label>
+                            <input
+                                type="number"
+                                value={policyFormData.exchange_window_days}
+                                onChange={(e) => setPolicyFormData({ ...policyFormData, exchange_window_days: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent"
+                                required
+                                min="0"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Number of days after delivery a customer can request a size exchange/replacement.</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Pre-configured Return Reasons (Comma Separated)</label>
+                            <textarea
+                                value={policyFormData.reasons}
+                                onChange={(e) => setPolicyFormData({ ...policyFormData, reasons: e.target.value })}
+                                className="w-full border border-gray-300 rounded-lg p-2.5 outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent"
+                                required
+                                rows="4"
+                                placeholder="e.g. Size Issue (Too big/small), Product Damaged/Defective, Did Not Like the Product"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Separate options with commas. These options will be presented as reasons in the return/exchange modal.</p>
+                        </div>
+
+                        <div className="pt-4 border-t flex justify-end">
+                            <button
+                                type="submit"
+                                className="bg-guild-red text-white hover:bg-red-800 font-bold px-6 py-2.5 rounded-lg shadow-md transition-colors"
+                            >
+                                Save Policy Configurations
+                            </button>
+                        </div>
+                    </form>
                 </div>
             )}
 
@@ -1390,6 +2052,70 @@ const AdminDashboard = () => {
                             </div>
                         </div>
                     </div>
+                </div>
+            )}
+
+            {/* Return Policy Form View */}
+            {activeTab === 'policy' && (
+                <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+                    <h2 className="text-xl font-bold text-gray-800 mb-6">Global Return & Size Exchange Policy Configurations</h2>
+                    <form onSubmit={handleSavePolicy} className="space-y-6 max-w-2xl">
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Return Window (Days)</label>
+                            <input
+                                type="number"
+                                required
+                                min="1"
+                                value={policyFormData.return_window_days}
+                                onChange={(e) => setPolicyFormData({ ...policyFormData, return_window_days: parseInt(e.target.value) || 1 })}
+                                className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-guild-red focus:border-guild-red"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Number of days after delivery during which customers can request returns/refunds.</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Size Exchange Window (Days)</label>
+                            <input
+                                type="number"
+                                required
+                                min="1"
+                                value={policyFormData.exchange_window_days}
+                                onChange={(e) => setPolicyFormData({ ...policyFormData, exchange_window_days: parseInt(e.target.value) || 1 })}
+                                className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-guild-red focus:border-guild-red"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Number of days after delivery during which customers can request size exchanges.</p>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-semibold text-gray-700 mb-1">Pre-configured Return Reasons</label>
+                            <textarea
+                                rows="3"
+                                value={policyFormData.reasons}
+                                onChange={(e) => setPolicyFormData({ ...policyFormData, reasons: e.target.value })}
+                                className="w-full border border-gray-300 rounded-md p-2.5 text-sm focus:ring-guild-red focus:border-guild-red"
+                                placeholder="Separate options with commas"
+                            />
+                            <p className="text-xs text-gray-500 mt-1">Separate reason options with commas (e.g. Size Issue, Damaged Product, Do Not Like It, Other).</p>
+                        </div>
+
+                        <div className="flex items-center space-x-2 pt-2">
+                            <input
+                                type="checkbox"
+                                id="is_active_policy"
+                                checked={policyFormData.is_active}
+                                onChange={(e) => setPolicyFormData({ ...policyFormData, is_active: e.target.checked })}
+                                className="rounded text-guild-red focus:ring-guild-red w-4 h-4"
+                            />
+                            <label htmlFor="is_active_policy" className="text-sm font-medium text-gray-800 cursor-pointer">Enable Return & Size Exchange Policy Globally</label>
+                        </div>
+
+                        <button
+                            type="submit"
+                            className="bg-guild-red text-white font-medium px-6 py-2.5 rounded-md hover:bg-red-800 transition-colors shadow-sm"
+                        >
+                            Save Policy Configurations
+                        </button>
+                    </form>
                 </div>
             )}
 
@@ -1751,6 +2477,23 @@ const AdminDashboard = () => {
                             <div><strong>Status:</strong> <span className="uppercase font-semibold">{selectedOrder.status}</span></div>
                             <div><strong>Total Price:</strong> ₹{selectedOrder.total_price}</div>
                             <div><strong>Shipping:</strong> {selectedOrder.shipping_city}, {selectedOrder.shipping_state}</div>
+                            
+                            {selectedOrder.status === 'cancelled' && (
+                                <div className="col-span-2 bg-red-50 border border-red-200 text-red-800 rounded-lg p-3 mt-2">
+                                    <strong>Cancellation Status:</strong> Cancelled.
+                                    {selectedOrder.cancellation_reason && <p className="mt-1 text-xs text-red-700">Reason: "{selectedOrder.cancellation_reason}"</p>}
+                                </div>
+                            )}
+                            {selectedOrder.status === 'refunded' && (
+                                <div className="col-span-2 bg-green-55 border border-green-200 text-green-800 rounded-lg p-3 mt-2">
+                                    <strong>Refund Status:</strong> Refunded.
+                                    {selectedOrder.refund_transaction_id && (
+                                        <p className="mt-1 text-xs text-green-700 font-medium">
+                                            Refund ID: <span className="font-mono font-bold">{selectedOrder.refund_transaction_id}</span> | Amount: ₹{selectedOrder.refund_amount}
+                                        </p>
+                                    )}
+                                </div>
+                            )}
                         </div>
 
                         <h3 className="text-lg font-bold mb-3 border-b pb-2">Items & Pre-Shipment Product Proofs</h3>
@@ -1816,6 +2559,37 @@ const AdminDashboard = () => {
                                     className="bg-indigo-600 text-white px-6 py-2 rounded hover:bg-indigo-800 font-medium"
                                 >
                                     Mark as Packed
+                                </button>
+                            )}
+                            {!['shipped', 'delivered', 'returned', 'refunded', 'cancelled'].includes(selectedOrder.status) && (
+                                <button
+                                    onClick={() => {
+                                        const reason = prompt("Enter cancellation reason:");
+                                        if (reason !== null) {
+                                            handleCancelOrder(selectedOrder.id, reason);
+                                        }
+                                    }}
+                                    className="bg-red-600 hover:bg-red-800 text-white px-6 py-2 rounded font-medium"
+                                >
+                                    Cancel Order
+                                </button>
+                            )}
+                            {selectedOrder.status === 'cancelled' && selectedOrder.transactions && selectedOrder.transactions.length > 0 && (
+                                <button
+                                    onClick={async () => {
+                                        const confirmed = await showConfirm({
+                                            title: 'Refund Payment',
+                                            message: 'Are you sure you want to refund this order payment?',
+                                            type: 'info',
+                                            confirmText: 'Refund Payment'
+                                        });
+                                        if (confirmed) {
+                                            handleRefundOrder(selectedOrder.id);
+                                        }
+                                    }}
+                                    className="bg-green-600 hover:bg-green-800 text-white px-6 py-2 rounded font-medium"
+                                >
+                                    Refund Payment
                                 </button>
                             )}
                             <button onClick={() => setIsOrderModalOpen(false)} className="px-6 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 font-medium">
@@ -1908,6 +2682,114 @@ const AdminDashboard = () => {
                     </div>
                 </div>
             )}
+        
+            {/* Category Add/Edit Modal */}
+            {categoryModalOpen && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-bold text-gray-900">
+                                {editingCategory ? "Edit Custom Category" : "Add New Custom Category"}
+                            </h3>
+                            <button onClick={() => setCategoryModalOpen(false)} className="text-gray-400 hover:text-gray-600">✕</button>
+                        </div>
+                        <form onSubmit={handleSaveCategory} className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Category Name</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="e.g. Women's Lower, Oversized Tees, Shorts"
+                                    value={categoryFormData.name}
+                                    onChange={(e) => setCategoryFormData({ ...categoryFormData, name: e.target.value })}
+                                    className="w-full border rounded-md p-2 text-sm focus:ring-guild-red focus:border-guild-red"
+                                />
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                                <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={categoryFormData.is_womens}
+                                        onChange={(e) => setCategoryFormData({ ...categoryFormData, is_womens: e.target.checked })}
+                                        className="rounded text-guild-red focus:ring-guild-red"
+                                    />
+                                    <span>Is Women's Collection (Show in Women's section)</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={categoryFormData.is_published}
+                                        onChange={(e) => setCategoryFormData({ ...categoryFormData, is_published: e.target.checked })}
+                                        className="rounded text-guild-red focus:ring-guild-red"
+                                    />
+                                    <span>Published (Visible on frontend navigation)</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={categoryFormData.is_returnable}
+                                        onChange={(e) => setCategoryFormData({ ...categoryFormData, is_returnable: e.target.checked })}
+                                        className="rounded text-guild-red focus:ring-guild-red"
+                                    />
+                                    <span>Allow Returns by Default for Items in this Category</span>
+                                </label>
+
+                                <label className="flex items-center space-x-2 text-sm text-gray-700 cursor-pointer">
+                                    <input
+                                        type="checkbox"
+                                        checked={categoryFormData.is_exchangeable}
+                                        onChange={(e) => setCategoryFormData({ ...categoryFormData, is_exchangeable: e.target.checked })}
+                                        className="rounded text-guild-red focus:ring-guild-red"
+                                    />
+                                    <span>Allow Size Exchanges by Default for Items in this Category</span>
+                                </label>
+                            </div>
+
+                            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setCategoryModalOpen(false)}
+                                    className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-md"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 text-sm font-medium text-white bg-guild-red hover:bg-red-800 rounded-md shadow-sm"
+                                >
+                                    {editingCategory ? "Update Category" : "Create Category"}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* Image Zoom Overlay Modal */}
+            {zoomedImage && (
+                <div
+                    className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-4 z-50 cursor-zoom-out"
+                    onClick={() => setZoomedImage(null)}
+                >
+                    <div className="relative max-w-4xl max-h-[90vh]">
+                        <img
+                            src={zoomedImage}
+                            alt="Zoomed Verification Proof"
+                            className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
+                        />
+                        <button
+                            onClick={() => setZoomedImage(null)}
+                            className="absolute -top-10 right-0 text-white text-xl font-bold bg-gray-800 hover:bg-black rounded-full px-3 py-1"
+                        >
+                            ✕ Close
+                        </button>
+                    </div>
+                </div>
+            )}
+
         </div>
     );
 };

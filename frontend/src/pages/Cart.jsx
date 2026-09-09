@@ -120,50 +120,48 @@ const Cart = () => {
                 </label>
             </div>
 
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
                 {cart.map((item) => (
-                    <div key={item.id} className={`flex flex-col sm:flex-row items-center border-b border-gray-100 pb-6 last:border-0 p-4 rounded-lg transition-colors ${selectedItems.has(item.id) ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
-                        {/* Checkbox */}
-                        <div className="mr-4 sm:mr-6 mb-4 sm:mb-0">
+                    <div key={item.id} className={`flex flex-col md:flex-row items-start md:items-center justify-between border-b border-gray-100 pb-4 md:pb-6 last:border-0 p-3 sm:p-4 rounded-lg transition-colors gap-3 sm:gap-4 overflow-hidden ${selectedItems.has(item.id) ? 'bg-red-50' : 'hover:bg-gray-50'}`}>
+                        {/* Left Info: Checkbox + Image + Details */}
+                        <div className="flex items-center gap-3 sm:gap-4 w-full md:w-auto flex-1 min-w-0">
                             <input
                                 type="checkbox"
                                 checked={selectedItems.has(item.id)}
                                 onChange={() => handleToggleItem(item.id)}
-                                className="w-5 h-5 text-guild-red rounded focus:ring-guild-red border-gray-300"
+                                className="w-5 h-5 text-guild-red rounded focus:ring-guild-red border-gray-300 flex-shrink-0"
                             />
-                        </div>
-
-                        <div className="flex items-center space-x-6 w-full sm:w-auto flex-1">
-                            <div className="flex-shrink-0 w-24 h-24 border border-gray-200 rounded-md overflow-hidden bg-white">
+                            <div className="flex-shrink-0 w-16 h-16 sm:w-20 sm:h-20 md:w-24 md:h-24 border border-gray-200 rounded-md overflow-hidden bg-white">
                                 <img
                                     src={getImageUrl(item.product_details.image)}
                                     alt={item.product_details.name}
-                                    className="w-full h-full object-contain p-2"
+                                    className="w-full h-full object-contain p-1 sm:p-2"
                                 />
                             </div>
                             <div className="flex-1 min-w-0">
-                                <h3 className="text-lg font-bold text-gray-900 truncate">{item.product_details.name}</h3>
-                                <p className="text-guild-red font-bold text-lg mt-1">₹ {item.product_details.price}</p>
+                                <h3 className="text-sm sm:text-base md:text-lg font-bold text-gray-900 truncate">{item.product_details.name}</h3>
+                                <p className="text-guild-red font-bold text-sm sm:text-base md:text-lg mt-0.5 whitespace-nowrap">₹ {item.product_details.price}</p>
                                 {item.size && (
-                                    <p className="text-sm text-gray-500 mt-1">Size: <span className="font-medium text-gray-700">{item.size}</span></p>
+                                    <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Size: <span className="font-medium text-gray-700">{item.size}</span></p>
                                 )}
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-8 mt-4 sm:mt-0 w-full sm:w-auto justify-between sm:justify-end">
-                            <div className="flex items-center border border-gray-300 rounded-md bg-white">
+                        {/* Right Actions: Quantity controls + Line Total + Remove Button */}
+                        <div className="flex items-center justify-between md:justify-end gap-3 sm:gap-4 md:gap-6 w-full md:w-auto flex-shrink-0 pt-3 md:pt-0 border-t md:border-t-0 border-gray-200/60">
+                            <div className="flex items-center border border-gray-300 rounded-md bg-white flex-shrink-0">
                                 <button
-                                    className="px-3 py-1 text-gray-600 hover:bg-gray-100 hover:text-guild-red transition-colors"
+                                    className="px-2.5 sm:px-3 py-1 text-gray-600 hover:bg-gray-100 hover:text-guild-red transition-colors text-xs sm:text-base font-bold"
                                     onClick={() => updateQuantity(item.id, item.quantity - 1)}
                                     aria-label="Decrease quantity"
                                 >
                                     -
                                 </button>
-                                <span className="px-4 py-1 text-gray-900 font-medium border-l border-r border-gray-300 min-w-[3rem] text-center">
+                                <span className="px-2.5 sm:px-4 py-1 text-gray-900 font-medium border-l border-r border-gray-300 min-w-[2.2rem] sm:min-w-[3rem] text-center text-xs sm:text-base">
                                     {item.quantity}
                                 </span>
                                 <button
-                                    className="px-3 py-1 text-gray-600 hover:bg-gray-100 hover:text-green-600 transition-colors"
+                                    className="px-2.5 sm:px-3 py-1 text-gray-600 hover:bg-gray-100 hover:text-green-600 transition-colors text-xs sm:text-base font-bold"
                                     onClick={() => updateQuantity(item.id, item.quantity + 1)}
                                     aria-label="Increase quantity"
                                 >
@@ -171,13 +169,13 @@ const Cart = () => {
                                 </button>
                             </div>
 
-                            <div className="text-right min-w-[5rem]">
-                                <p className="font-bold text-gray-900">₹ {(item.total_price || (item.product_details.price * item.quantity)).toFixed(2)}</p>
+                            <div className="text-right whitespace-nowrap flex-shrink-0">
+                                <p className="font-bold text-gray-900 text-sm sm:text-base">₹ {(item.total_price || (item.product_details.price * item.quantity)).toFixed(2)}</p>
                             </div>
 
                             <button
                                 onClick={() => removeFromCart(item.id)}
-                                className="text-gray-400 hover:text-red-600 transition-colors p-2"
+                                className="text-gray-400 hover:text-red-600 transition-colors p-1.5 flex-shrink-0"
                                 aria-label="Remove item"
                             >
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -189,11 +187,11 @@ const Cart = () => {
                 ))}
             </div>
 
-            <div className="mt-8 bg-gray-50 p-6 rounded-lg border border-gray-100">
+            <div className="mt-8 bg-gray-50 p-4 sm:p-6 rounded-lg border border-gray-100">
                 <div className="flex flex-col sm:items-end">
-                    <div className="flex justify-between w-full max-w-md mb-6 border-b border-gray-200 pb-4">
-                        <span className="text-lg text-gray-600">Subtotal ({selectedItems.size} items selected)</span>
-                        <span className="text-2xl font-bold text-gray-900">₹ {selectedSubtotal.toFixed(2)}</span>
+                    <div className="flex items-center justify-between w-full max-w-md mb-6 border-b border-gray-200 pb-4 gap-4">
+                        <span className="text-sm sm:text-lg text-gray-600">Subtotal ({selectedItems.size} items selected)</span>
+                        <span className="text-xl sm:text-2xl font-bold text-gray-900 whitespace-nowrap flex-shrink-0 ml-2">₹ {selectedSubtotal.toFixed(2)}</span>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
                         <Link to="/" className="w-full sm:w-auto px-6 py-3 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-white hover:border-gray-400 transition-all text-center">

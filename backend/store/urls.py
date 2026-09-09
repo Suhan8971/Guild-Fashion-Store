@@ -5,7 +5,9 @@ from .views import (
     OrderViewSet, DashboardStatsView, CustomAuthToken, CartViewSet,
     CreateRazorpayOrder, VerifyRazorpayPayment, GoogleLogin, AnalyticsView,
     SendOTPView, VerifyOTPView, SendRegistrationEmailOTPView, VerifyRegistrationEmailOTPView,
-    ReturnRequestViewSet, ContactQueryViewSet, SuperAdminViewSet, OrderItemShipmentProofViewSet
+    ReturnRequestViewSet, ContactQueryViewSet, SuperAdminViewSet, OrderItemShipmentProofViewSet,
+    AddressViewSet, UserProfileView, ReturnPolicyConfigViewSet, ReserveStockView, ReleaseStockView,
+    InventoryAuditLogViewSet, OrderReturnRequestViewSet
 )
 from dj_rest_auth.views import UserDetailsView
 
@@ -16,9 +18,15 @@ router.register(r'matching-outfits', MatchingOutfitViewSet)
 router.register(r'orders', OrderViewSet, basename='order')
 router.register(r'cart', CartViewSet, basename='cart')
 router.register(r'returns', ReturnRequestViewSet, basename='returnrequest')
+router.register(r'post-order-requests', ReturnRequestViewSet, basename='post-order-requests')
+router.register(r'order-return-requests', OrderReturnRequestViewSet, basename='order-return-requests')
+router.register(r'inventory-logs', InventoryAuditLogViewSet, basename='inventory-logs')
+router.register(r'return-policy-configs', ReturnPolicyConfigViewSet, basename='return-policy-configs')
+router.register(r'return-policy-config', ReturnPolicyConfigViewSet, basename='return-policy-config')
 router.register(r'queries', ContactQueryViewSet, basename='queries')
 router.register(r'superadmin/users', SuperAdminViewSet, basename='superadmin-users')
 router.register(r'shipment-proofs', OrderItemShipmentProofViewSet, basename='shipment-proofs')
+router.register(r'addresses', AddressViewSet, basename='addresses')
 
 urlpatterns = [
     path('auth/register/', RegisterView.as_view(), name='register'),
@@ -29,8 +37,11 @@ urlpatterns = [
     path('auth/google/', GoogleLogin.as_view(), name='google_login'),
     path('analytics/', AnalyticsView.as_view(), name='analytics'),
     path('auth/user/', UserDetailsView.as_view(), name='rest_user_details'),
+    path('auth/profile/', UserProfileView.as_view(), name='user_profile'),
     path('checkout/send-otp/', SendOTPView.as_view(), name='send_otp'),
     path('checkout/verify-otp/', VerifyOTPView.as_view(), name='verify_otp'),
+    path('checkout/reserve-stock/', ReserveStockView.as_view(), name='checkout_reserve_stock'),
+    path('checkout/release-stock/', ReleaseStockView.as_view(), name='checkout_release_stock'),
     path('auth/send-email-otp/', SendRegistrationEmailOTPView.as_view(), name='send_email_otp'),
     path('auth/verify-email-otp/', VerifyRegistrationEmailOTPView.as_view(), name='verify_email_otp'),
     path('', include(router.urls)),

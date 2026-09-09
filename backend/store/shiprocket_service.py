@@ -182,3 +182,173 @@ class ShiprocketClient:
         except Exception as e:
             print(f"Shiprocket Rate Exception: {e}")
             return {"error": str(e)}
+
+    def create_return_order(self, return_request):
+        if not self.token:
+            if not self.login():
+                return None
+
+        url = f"{self.BASE_URL}/orders/create/return"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token}'
+        }
+
+        # Prepare Order Items
+        order_items = []
+        for item in return_request.items.all():
+            order_items.append({
+                "name": item.order_item.product.name,
+                "sku": str(item.order_item.product.id),
+                "units": item.quantity,
+                "selling_price": float(item.order_item.price),
+                "discount": "",
+                "tax": "",
+                "hsn": "" 
+            })
+
+        order = return_request.order
+        current_date = datetime.now().strftime("%Y-%m-%d")
+
+        # Let's calculate package dimensions/weight based on return items
+        total_weight_grams = 0
+        max_length = 0
+        max_breadth = 0
+        total_height = 0
+
+        for item in return_request.items.all():
+            try:
+                # Find corresponding variant
+                variant = item.order_item.product.variants.get(size=item.order_item.size)
+                total_weight_grams += float(variant.weight) * item.quantity
+                item_length = float(variant.length)
+                item_width = float(variant.width)
+                item_height = float(variant.height)
+                if item_length > max_length:
+                    max_length = item_length
+                if item_width > max_breadth:
+                    max_breadth = item_width
+                total_height += (item_height * item.quantity)
+            except Exception:
+                total_weight_grams += 500 # Default weight fallback
+
+        total_weight_kg = max(total_weight_grams / 1000.0, 0.5)
+        final_length = max(float(max_length), 10.0) # default 10cm
+        final_breadth = max(float(max_breadth), 10.0)
+        final_height = max(float(total_height), 5.0)
+
+        # In Shiprocket return order:
+        # pickup_* is the customer's address (where the reverse pickup is done)
+        # shipping_* is the warehouse's address (where the package is delivered)
+        
+        # Split customer name
+        customer_name = order.shipping_name or (order.user.first_name or order.user.username)
+        pickup_first_name = customer_name.split(' ', 1)[0]
+        pickup_last_name = customer_name.split(' ', 1)[1] if ' ' in customer_name else ""
+
+        payload = {
+            "order_id": f"RT-{return_request.id}",
+            "order_date": current_date,
+            "channel_id": "", # optional
+            "pickup_customer_name": pickup_first_name,
+            "pickup_last_name": pickup_last_name,
+            "pickup_address": order.shipping_address or "Star Plaza Building Kinnigoli",
+            "pickup_address_2": "",
+            "pickup_city": order.shipping_city or "Kinnigoli",
+            "pickup_state": order.shipping_state or "Karnataka",
+            "pickup_country": "India",
+            "pickup_pincode": int(order.shipping_pincode or "574150"),
+            "pickup_email": order.user.email,
+            "pickup_phone": order.shipping_phone or "9999999999",
+            
+            "shipping_customer_name": "Guild Fashion Warehouse",
+            "shipping_address": "Star Plaza Building Kinnigoli",
+            "shipping_address_2": "",
+            "shipping_city": "Kinnigoli",
+            "shipping_state": "Karnataka",
+            "shipping_country": "India",
+            "shipping_pincode": 574150,
+            "shipping_email": "warehouse@guildfashion.com",
+            "shipping_phone": "9876543210",
+            
+            "order_items": order_items,
+            "payment_method": "Prepaid",
+            "total_discount": "0",
+            "sub_total": float(sum(item.order_item.price * item.quantity for item in return_request.items.all())),
+            "length": final_length,
+            "breadth": final_breadth,
+            "height": final_height,
+            "weight": total_weight_kg
+        }
+
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            if response.status_code in [200, 201]:
+                return response.json()
+            else:
+                print(f"Shiprocket Create Return Order Failed: {response.text}")
+                return {"error": response.text}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def generate_reverse_awb(self, shipment_id):
+        if not self.token:
+            if not self.login():
+                return None
+        url = f"{self.BASE_URL}/courier/assign/awb"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token}'
+        }
+        payload = {
+            "shipment_id": shipment_id
+        }
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Shiprocket Assign AWB Failed: {response.text}")
+                return {"error": response.text}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def schedule_reverse_pickup(self, shipment_id):
+        if not self.token:
+            if not self.login():
+                return None
+        url = f"{self.BASE_URL}/courier/generate/pickup"
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.token}'
+        }
+        payload = {
+            "shipment_id": [shipment_id]
+        }
+        try:
+            response = requests.post(url, json=payload, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Shiprocket Schedule Pickup Failed: {response.text}")
+                return {"error": response.text}
+        except Exception as e:
+            return {"error": str(e)}
+
+    def track_shipment(self, awb_code):
+        if not self.token:
+            if not self.login():
+                return None
+        url = f"{self.BASE_URL}/courier/track/awb/{awb_code}"
+        headers = {
+            'Authorization': f'Bearer {self.token}'
+        }
+        try:
+            response = requests.get(url, headers=headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                print(f"Shiprocket Track Shipment Failed: {response.text}")
+                return {"error": response.text}
+        except Exception as e:
+            return {"error": str(e)}

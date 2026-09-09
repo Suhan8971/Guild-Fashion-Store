@@ -10,6 +10,7 @@ const CustomerStore = () => {
     const categoryFilter = searchParams.get('category');
     const [searchQuery, setSearchQuery] = useState('');
     const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
     const lastUpdatedRef = useRef(null);
 
@@ -76,9 +77,9 @@ const CustomerStore = () => {
     if (loading) return <div className="text-center py-10">Loading store...</div>;
 
     return (
-        <div className="flex flex-col md:flex-row gap-8">
-            {/* Sidebar */}
-            <aside className="w-full md:w-64 flex-shrink-0">
+        <div className="flex flex-col lg:flex-row gap-8 relative">
+            {/* Sidebar - Visible on Desktop (>=1024px) */}
+            <aside className="hidden lg:block lg:w-64 flex-shrink-0">
                 <div className="bg-white rounded-lg shadow-sm p-6 sticky top-4">
                     <h2 className="text-xl font-bold text-gray-900 mb-4 border-b pb-2">Categories</h2>
                     <ul className="space-y-2">
@@ -103,6 +104,73 @@ const CustomerStore = () => {
                     </ul>
                 </div>
             </aside>
+
+            {/* Slide-out Category Drawer for Mobile/Tablet (<1024px) */}
+            <div className={`fixed inset-0 z-50 lg:hidden ${isDrawerOpen ? 'pointer-events-auto' : 'pointer-events-none'}`}>
+                {/* Semi-transparent Backdrop */}
+                <div
+                    onClick={() => setIsDrawerOpen(false)}
+                    className={`absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300 ease-in-out ${isDrawerOpen ? 'opacity-100' : 'opacity-0'}`}
+                />
+                
+                {/* Off-canvas Panel */}
+                <div
+                    className={`absolute inset-y-0 left-0 w-72 max-w-[80vw] bg-white/90 backdrop-blur-md shadow-2xl border-r border-white/20 p-6 flex flex-col transform transition-transform duration-300 ease-in-out ${isDrawerOpen ? 'translate-x-0' : '-translate-x-full'}`}
+                >
+                    <div className="flex justify-between items-center mb-6 border-b pb-3">
+                        <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-guild-red" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                            Categories
+                        </h2>
+                        <button
+                            onClick={() => setIsDrawerOpen(false)}
+                            className="text-gray-400 hover:text-gray-600 transition-colors p-1.5 rounded-full hover:bg-gray-100/50"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto pr-1">
+                        <ul className="space-y-2">
+                            <li>
+                                <Link
+                                    to="/"
+                                    onClick={() => setIsDrawerOpen(false)}
+                                    className={`block px-4 py-2.5 rounded-xl transition-all duration-200 font-medium ${!categoryFilter ? 'bg-red-50 text-guild-red shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
+                                >
+                                    All Products
+                                </Link>
+                            </li>
+                            {categories.map(cat => (
+                                <li key={cat.id}>
+                                    <Link
+                                        to={`/?category=${cat.slug}`}
+                                        onClick={() => setIsDrawerOpen(false)}
+                                        className={`block px-4 py-2.5 rounded-xl transition-all duration-200 font-medium ${categoryFilter === cat.slug ? 'bg-red-50 text-guild-red shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}
+                                    >
+                                        {cat.name}
+                                    </Link>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            {/* Floating Categories Trigger Button for Mobile/Tablet (<1024px) */}
+            <button
+                onClick={() => setIsDrawerOpen(true)}
+                className="lg:hidden fixed bottom-6 left-6 z-40 bg-gradient-to-r from-guild-red to-red-700 text-white px-5 py-3 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 active:scale-95 transition-all flex items-center gap-2 font-bold text-sm tracking-wide"
+            >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M4 6h16M4 12h16M4 18h7" />
+                </svg>
+                Categories
+            </button>
 
             {/* Product Grid */}
             <div className="flex-1">

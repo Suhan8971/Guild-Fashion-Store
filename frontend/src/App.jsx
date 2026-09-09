@@ -10,6 +10,7 @@ import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
 import OrderHistory from './pages/OrderHistory';
+import MyProfile from './pages/MyProfile';
 import Contact from './pages/Contact';
 import AboutUs from './pages/AboutUs';
 import MatchingProducts from './pages/MatchingProducts';
@@ -78,6 +79,7 @@ const AppContent = () => {
                     <Route path="/product/:id/matches" element={<MatchingProducts />} />
                     <Route path="/cart" element={<Cart />} />
                     <Route path="/orders" element={<OrderHistory />} />
+                    <Route path="/profile" element={<MyProfile />} />
                     <Route path="/checkout" element={<Checkout />} />
                     <Route path="/order-success" element={<OrderSuccess />} />
                     <Route path="/contact" element={<Contact />} />

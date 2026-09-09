@@ -49,6 +49,9 @@ const GoogleLoginButton = ({ setUser, setError }) => {
                 navigate('/');
             } catch (err) {
                 console.error('Google login error:', err);
+                if (err.response && err.response.data) {
+                    console.error('Google login response error details:', err.response.data);
+                }
                 setError('Google login failed. Please try again.');
             }
         },

@@ -106,7 +106,7 @@ const Contact = () => {
                                         value={formData.name}
                                         onChange={handleChange}
                                         className="w-full bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent transition-all"
-                                        placeholder="John Doe"
+                                        placeholder="Namith Salian"
                                     />
                                 </div>
 
@@ -136,7 +136,7 @@ const Contact = () => {
                                         value={formData.email}
                                         onChange={handleChange}
                                         className="w-full bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent transition-all"
-                                        placeholder="john@example.com"
+                                        placeholder="namithsalian@example.com"
                                     />
                                 </div>
 
