@@ -3,6 +3,7 @@ import api, { orderAPI, postOrderAPI, policyAPI, cartAPI } from '../services/api
 import { Link, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useModal } from '../context/ModalContext';
+import { getImageUrl } from '../utils/imageUrl';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -145,12 +146,6 @@ const OrderHistory = () => {
         fetchOrders();
         fetchRequests();
     }, []);
-
-    const getImageUrl = (imagePath) => {
-        if (!imagePath) return 'https://via.placeholder.com/150';
-        if (imagePath.startsWith('http')) return imagePath;
-        return `${import.meta.env.VITE_MEDIA_URL || 'http://localhost:8000'}${imagePath}`;
-    };
 
     const formatDate = (dateString) => {
         return new Date(dateString).toLocaleDateString('en-US', {

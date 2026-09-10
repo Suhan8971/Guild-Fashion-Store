@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import api from '../services/api';
 import { useModal } from '../context/ModalContext';
 import GoogleLoginButton from '../components/GoogleLoginButton';
+import AuthTabs from '../components/AuthTabs';
 
 const Register = ({ setUser }) => {
     const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ const Register = ({ setUser }) => {
     const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
+    const location = useLocation();
     const { showModal } = useModal();
 
     const handleChange = (e) => {
@@ -36,14 +38,13 @@ const Register = ({ setUser }) => {
             await api.post('/auth/register/', formData);
             showModal({
                 title: 'Registration Successful',
-                message: 'Your account has been created! Please login.',
+                message: 'Your account has been created! Please login to proceed.',
                 type: 'success',
-                confirmText: 'Login',
-                onConfirm: () => navigate('/login')
+                confirmText: 'Login Now',
+                onConfirm: () => navigate('/login', { state: location.state })
             });
         } catch (err) {
             console.error('Registration error:', err);
-            // Display clean error from backend if available
             let errMsg = 'Registration failed. Please try again.';
             if (err.response?.data) {
                 if (err.response.data.error) {
@@ -63,21 +64,22 @@ const Register = ({ setUser }) => {
     };
 
     return (
-        <div className="max-w-md mx-auto bg-white p-8 rounded-lg shadow-md my-8">
-            <h2 className="text-2xl font-bold mb-6 text-center text-guild-red">Register</h2>
+        <div className="max-w-md mx-auto bg-white p-6 sm:p-8 rounded-lg shadow-md my-6 sm:my-8">
+            <AuthTabs activeTab="register" />
+
             {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
 
             <GoogleLoginButton setUser={setUser} setError={setError} />
 
             <div className="flex items-center my-4">
                 <div className="flex-grow border-t border-gray-300"></div>
-                <span className="flex-shrink-0 mx-4 text-gray-500">OR</span>
+                <span className="flex-shrink-0 mx-4 text-gray-500 text-xs sm:text-sm font-medium">OR</span>
                 <div className="flex-grow border-t border-gray-300"></div>
             </div>
 
             <form onSubmit={handleSubmit}>
                 <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Username</label>
+                    <label className="block text-gray-700 text-sm font-medium mb-1.5">Username</label>
                     <input
                         type="text"
                         name="username"
@@ -89,7 +91,7 @@ const Register = ({ setUser }) => {
                     />
                 </div>
                 <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Email</label>
+                    <label className="block text-gray-700 text-sm font-medium mb-1.5">Email</label>
                     <input
                         type="email"
                         name="email"
@@ -101,7 +103,7 @@ const Register = ({ setUser }) => {
                     />
                 </div>
                 <div className="mb-4">
-                    <label className="block text-gray-700 mb-2">Password</label>
+                    <label className="block text-gray-700 text-sm font-medium mb-1.5">Password</label>
                     <input
                         type="password"
                         name="password"
@@ -113,7 +115,7 @@ const Register = ({ setUser }) => {
                     />
                 </div>
                 <div className="mb-6">
-                    <label className="block text-gray-700 mb-2">Confirm Password</label>
+                    <label className="block text-gray-700 text-sm font-medium mb-1.5">Confirm Password</label>
                     <input
                         type="password"
                         name="confirm_password"
@@ -128,7 +130,7 @@ const Register = ({ setUser }) => {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-guild-red text-white py-2 rounded-lg hover:bg-red-800 transition duration-300 font-bold disabled:opacity-50"
+                    className="w-full bg-guild-red text-white py-2.5 rounded-lg hover:bg-red-800 transition duration-300 font-bold text-sm sm:text-base shadow-sm disabled:opacity-50"
                 >
                     {loading ? 'Registering...' : 'Register'}
                 </button>

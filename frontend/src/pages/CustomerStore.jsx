@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import api from '../services/api';
+import { getImageUrl } from '../utils/imageUrl';
 
 const CustomerStore = () => {
     const [products, setProducts] = useState([]);
@@ -205,7 +206,7 @@ const CustomerStore = () => {
                                 <div className="relative pt-[100%] bg-gray-100">
                                     <img
                                         className={`absolute top-0 left-0 w-full h-full object-cover ${product.stock <= 0 ? 'opacity-60 grayscale' : ''}`}
-                                        src={product.image || 'https://via.placeholder.com/300'}
+                                        src={getImageUrl(product.image)}
                                         alt={product.name}
                                     />
                                     {product.stock <= 0 && (

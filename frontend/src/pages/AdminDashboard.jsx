@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../services/api';
 import { useModal } from '../context/ModalContext';
+import { getImageUrl } from '../utils/imageUrl';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -1658,7 +1659,7 @@ const AdminDashboard = () => {
                                                                 </div>
                                                                 <div className="text-right ml-4">
                                                                     {item.image ? (
-                                                                        <a href={`${import.meta.env.VITE_MEDIA_URL || 'http://localhost:8000'}${item.image}`} target="_blank" rel="noopener noreferrer" className="text-guild-red hover:underline text-[10px] font-bold flex items-center gap-0.5">
+                                                                        <a href={getImageUrl(item.image)} target="_blank" rel="noopener noreferrer" className="text-guild-red hover:underline text-[10px] font-bold flex items-center gap-0.5">
                                                                             Proof Image
                                                                         </a>
                                                                     ) : (
@@ -1999,7 +2000,7 @@ const AdminDashboard = () => {
                                 {analyticsData.top_products.map((item, idx) => (
                                     <div key={idx} className="flex items-center gap-4 py-2 border-b border-gray-100/50 last:border-0 hover:bg-gray-50/50 rounded-lg px-2 transition">
                                         <div className="w-10 h-10 rounded-md bg-gray-100 overflow-hidden flex-shrink-0 shadow-sm">
-                                            <img src={`${import.meta.env.VITE_MEDIA_URL || 'http://localhost:8000'}/media/${item.product__image}`} alt={item.product__name} className="w-full h-full object-cover" />
+                                            <img src={getImageUrl(item.product__image.startsWith('/') ? item.product__image : `/media/${item.product__image}`)} alt={item.product__name} className="w-full h-full object-cover" />
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-bold text-gray-800 truncate">{item.product__name}</p>

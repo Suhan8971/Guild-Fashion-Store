@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
+import { getImageUrl } from '../utils/imageUrl';
 
 const MatchingProducts = () => {
     const { id } = useParams();
@@ -63,7 +64,7 @@ const MatchingProducts = () => {
                         <div key={match.id} className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden flex flex-col transition-transform hover:-translate-y-1 hover:shadow-lg">
                             <div className="aspect-w-1 aspect-h-1 w-full bg-gray-100 relative">
                                 <img
-                                    src={match.image ? (match.image.startsWith('http') ? match.image : `${import.meta.env.VITE_MEDIA_URL || 'http://localhost:8000'}${match.image}`) : 'https://via.placeholder.com/300'}
+                                    src={getImageUrl(match.image)}
                                     alt={match.name}
                                     className={`h-48 w-full object-cover object-center ${match.stock <= 0 ? 'opacity-60 grayscale' : ''}`}
                                 />

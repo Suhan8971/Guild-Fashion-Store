@@ -16,5 +16,9 @@ urlpatterns = [
     path('password-reset/<uidb64>/<token>/', TemplateView.as_view(template_name="password_reset_confirm.html"), name='password_reset_confirm'),
 ]
 
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+from django.urls import re_path
+from django.views.static import serve
+
+urlpatterns += [
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+]

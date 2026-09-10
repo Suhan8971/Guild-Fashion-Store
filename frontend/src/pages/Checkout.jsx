@@ -3,6 +3,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { useModal } from '../context/ModalContext';
 import api, { orderAPI } from '../services/api';
+import { getImageUrl } from '../utils/imageUrl';
 
 const roundShippingCharge = (val) => {
     const num = parseFloat(val);
@@ -282,11 +283,13 @@ const Checkout = () => {
     }, [otpSent, otpVerified, captchaVerified, shippingDetails, paymentMethod]);
 
     useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/login', { state: { from: '/checkout', selectedItems: selectedItemIds } });
+            return;
+        }
         if (cart.length === 0) {
             navigate('/cart');
-        } else if (selectedItemIds.length === 0 && cart.length > 0) {
-            // If user somehow got here without selecting items (e.g. direct URL), send back to cart
-            // navigate('/cart'); // Optional: enforce selection
         }
     }, [cart, navigate, selectedItemIds]);
 
@@ -406,11 +409,6 @@ const Checkout = () => {
         }
     };
 
-    const getImageUrl = (imagePath) => {
-        if (!imagePath) return 'https://via.placeholder.com/150';
-        if (imagePath.startsWith('http')) return imagePath;
-        return `${import.meta.env.VITE_MEDIA_URL || 'http://localhost:8000'}${imagePath}`;
-    };
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

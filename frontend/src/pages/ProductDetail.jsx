@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { useCart } from '../context/CartContext';
 import { useModal } from '../context/ModalContext';
+import { getImageUrl } from '../utils/imageUrl';
 
 const ProductDetail = () => {
     const { id } = useParams();
@@ -61,7 +62,7 @@ const ProductDetail = () => {
             </button>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
                 <div className="aspect-w-1 aspect-h-1 w-full overflow-hidden rounded-lg bg-gray-200">
-                    <img src={product.image || 'https://via.placeholder.com/500'} alt={product.name} className="h-full w-full object-cover object-center" />
+                    <img src={getImageUrl(product.image)} alt={product.name} className="h-full w-full object-cover object-center" />
                 </div>
 
                 <div className="flex flex-col justify-center">
@@ -187,7 +188,7 @@ const ProductDetail = () => {
                                         <div key={match.id} className="flex items-center space-x-4 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                                             <div className="flex-shrink-0 h-24 w-24 rounded-md overflow-hidden bg-gray-100 border border-gray-200">
                                                 <img
-                                                    src={match.image ? (match.image.startsWith('http') ? match.image : `${import.meta.env.VITE_MEDIA_URL || 'http://localhost:8000'}${match.image}`) : 'https://via.placeholder.com/150'}
+                                                    src={getImageUrl(match.image)}
                                                     alt={match.name}
                                                     className="h-full w-full object-cover object-center"
                                                 />

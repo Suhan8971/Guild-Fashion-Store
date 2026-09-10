@@ -63,14 +63,16 @@ const Cart = () => {
         try {
             const token = localStorage.getItem('token');
             if (!token) {
+                const checkoutState = { from: '/checkout', selectedItems: Array.from(selectedItems) };
                 showModal({
-                    title: 'Login Required',
-                    message: 'Please login to proceed to checkout.',
+                    title: 'Authentication Required',
+                    message: 'Please register or log in to proceed with your order checkout.',
                     type: 'warning',
                     confirmText: 'Login',
-                    onConfirm: () => navigate('/login'),
+                    onConfirm: () => navigate('/login', { state: checkoutState }),
                     showCancel: true,
-                    cancelText: 'Cancel'
+                    cancelText: 'Register First',
+                    onCancel: () => navigate('/register', { state: checkoutState })
                 });
                 return;
             }
