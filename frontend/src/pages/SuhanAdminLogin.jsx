@@ -19,22 +19,28 @@ const SuhanAdminLogin = ({ setUser }) => {
     const [editUserId, setEditUserId] = useState(null);
     const [formData, setFormData] = useState({ email: '', password: '', role: 'admin' });
 
-    const SUPER_ADMIN_EMAIL = import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'admin@example.com';
+    const SUPER_ADMIN_EMAIL = import.meta.env.VITE_SUPER_ADMIN_EMAIL || 'suhankaminofficial@gmail.com';
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
-        if (username !== SUPER_ADMIN_EMAIL) {
-            setError('Access Denied: Restricted to Super Administrator only.');
-            setLoading(false);
-            return;
-        }
-
         try {
-            const res = await api.post('/auth/login/', { username, password });
+            const res = await api.post('/auth/login/', { username: username.trim(), password });
             const userData = res.data;
+
+            // Verify user is an admin / superuser / superadmin
+            const userEmail = (userData.email || '').toLowerCase();
+            const isAdminRole = ['admin', 'superadmin', 'developer'].includes(userData.role);
+            const isSuperUser = userData.is_superuser || userData.is_staff;
+            const isKnownSuperAdmin = userEmail === 'suhankaminofficial@gmail.com' || userEmail === SUPER_ADMIN_EMAIL.toLowerCase();
+
+            if (!isAdminRole && !isSuperUser && !isKnownSuperAdmin) {
+                setError('Access Denied: Restricted to Super Administrator only.');
+                setLoading(false);
+                return;
+            }
 
             localStorage.setItem('token', userData.token);
             localStorage.setItem('user', JSON.stringify(userData));
@@ -43,8 +49,8 @@ const SuhanAdminLogin = ({ setUser }) => {
             setIsSuperAdmin(true);
             fetchUsers();
         } catch (err) {
-            console.error(err);
-            setError('Invalid credentials.');
+            console.error('Superadmin login error:', err);
+            setError(err.response?.data?.error || 'Invalid email or password.');
         } finally {
             setLoading(false);
         }
