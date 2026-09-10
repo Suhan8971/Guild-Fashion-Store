@@ -30,7 +30,7 @@ SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-replace-me')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '13.201.187.157']
 CSRF_TRUSTED_ORIGINS = ['https://*.loca.lt', 'https://*.serveo.net', 'https://*.localhost.run']
 
 
