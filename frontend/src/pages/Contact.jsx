@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { contactAPI } from '../services/api';
 import { useModal } from '../context/ModalContext';
 
@@ -54,21 +55,29 @@ const Contact = () => {
         }
     };
 
+    // Stagger container for form inputs
+    const formStagger = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: {
+                staggerChildren: 0.1,
+                delayChildren: 0.2
+            }
+        }
+    };
+
+    const fieldVariant = {
+        hidden: { opacity: 0, y: 15 },
+        visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: "easeOut" } }
+    };
+
     return (
         <main className="container mx-auto px-4 py-8 flex-grow flex items-center justify-center">
-            <div className="bg-guild-black flex items-center justify-center relative overflow-hidden py-12 px-6 rounded-2xl w-full max-w-md shadow-2xl border border-white/5">
-                {/* Background Decorative Elements for Glassmorphism effect */}
-                <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 rounded-2xl">
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="absolute top-4 right-4 text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 p-2 rounded-full backdrop-blur-sm transition-all z-20"
-                        aria-label="Close"
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                    </button>
-                    <div className="absolute -top-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-guild-red opacity-10 blur-[100px]"></div>
+            <div className="bg-guild-black flex items-center justify-center relative overflow-hidden py-10 px-6 rounded-2xl w-full max-w-md shadow-2xl border border-white/5">
+                {/* Background Decorative Elements */}
+                <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 rounded-2xl pointer-events-none">
+                    <div className="absolute -top-[10%] -right-[10%] w-[50%] h-[50%] rounded-full bg-guild-red opacity-15 blur-[100px]"></div>
                     <div className="absolute top-[40%] -left-[10%] w-[40%] h-[60%] rounded-full bg-red-900 opacity-20 blur-[120px]"></div>
                     <div className="absolute bottom-[0%] right-[20%] w-[30%] h-[30%] rounded-full bg-gray-600 opacity-10 blur-[80px]"></div>
                 </div>
@@ -76,28 +85,66 @@ const Contact = () => {
                 <div className="container mx-auto px-4 z-10">
                     <div className="max-w-md mx-auto relative">
 
-                        {/* Header Details */}
-                        <div className="text-center mb-8">
+                        {/* Back to Shop Option before Get in Touch */}
+                        <motion.div
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.4 }}
+                            className="mb-4"
+                        >
+                            <Link
+                                to="/"
+                                className="inline-flex items-center gap-2 text-xs sm:text-sm font-semibold text-gray-300 hover:text-white bg-white/10 hover:bg-white/20 px-3.5 py-1.5 rounded-full border border-white/10 transition-all group backdrop-blur-md"
+                                title="Return to shop page"
+                            >
+                                <svg className="w-4 h-4 text-guild-red group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                                </svg>
+                                <span>Back to Shop</span>
+                            </Link>
+                        </motion.div>
 
-                            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3 tracking-tight">
+                        {/* Header Details with Animations */}
+                        <motion.div
+                            initial={{ opacity: 0, y: -15 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.5 }}
+                            className="text-center mb-8"
+                        >
+                            <h1 className="text-3xl md:text-4xl font-extrabold text-white mb-3 tracking-tight drop-shadow-md">
                                 Get in Touch
                             </h1>
 
-                            <p className="text-gray-400 text-sm md:text-base">
+                            <motion.p
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                transition={{ duration: 0.5, delay: 0.2 }}
+                                className="text-gray-400 text-sm md:text-base font-medium"
+                            >
                                 Have a question or need assistance? Fill out the form below.
-                            </p>
-                        </div>
+                            </motion.p>
+                        </motion.div>
 
-                        {/* Glassmorphism Form Container */}
-                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-2xl shadow-2xl relative">
-                            {/* Close Button */}
+                        {/* Glassmorphism Form Container with Motion */}
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.96, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            transition={{ duration: 0.5, delay: 0.1 }}
+                            className="bg-white/5 backdrop-blur-xl border border-white/10 p-6 md:p-8 rounded-2xl shadow-2xl relative"
+                        >
+                            <motion.form
+                                variants={formStagger}
+                                initial="hidden"
+                                animate="visible"
+                                onSubmit={handleSubmit}
+                                className="space-y-4 md:space-y-5"
+                            >
 
-
-                            <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
-
-                                {/* Name Field */}
-                                <div className="space-y-1">
-                                    <label htmlFor="name" className="block text-sm font-medium text-gray-300">Full Name</label>
+                                {/* Full Name Field */}
+                                <motion.div variants={fieldVariant} className="space-y-1.5">
+                                    <label htmlFor="name" className="block text-xs sm:text-sm font-semibold text-gray-200">
+                                        Full Name
+                                    </label>
                                     <input
                                         type="text"
                                         id="name"
@@ -105,14 +152,16 @@ const Contact = () => {
                                         required
                                         value={formData.name}
                                         onChange={handleChange}
-                                        className="w-full bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent transition-all"
+                                        className="w-full bg-white/10 border border-white/15 text-white placeholder-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent focus:scale-[1.01] transition-all duration-300"
                                         placeholder="Namith Salian"
                                     />
-                                </div>
+                                </motion.div>
 
                                 {/* Phone Field */}
-                                <div className="space-y-1">
-                                    <label htmlFor="phone" className="block text-sm font-medium text-gray-300">Phone Number</label>
+                                <motion.div variants={fieldVariant} className="space-y-1.5">
+                                    <label htmlFor="phone" className="block text-xs sm:text-sm font-semibold text-gray-200">
+                                        Phone Number
+                                    </label>
                                     <input
                                         type="tel"
                                         id="phone"
@@ -120,14 +169,16 @@ const Contact = () => {
                                         required
                                         value={formData.phone}
                                         onChange={handleChange}
-                                        className="w-full bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent transition-all"
+                                        className="w-full bg-white/10 border border-white/15 text-white placeholder-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent focus:scale-[1.01] transition-all duration-300"
                                         placeholder="+91 98765 43210"
                                     />
-                                </div>
+                                </motion.div>
 
                                 {/* Email Field */}
-                                <div className="space-y-1">
-                                    <label htmlFor="email" className="block text-sm font-medium text-gray-300">Email Address</label>
+                                <motion.div variants={fieldVariant} className="space-y-1.5">
+                                    <label htmlFor="email" className="block text-xs sm:text-sm font-semibold text-gray-200">
+                                        Email Address
+                                    </label>
                                     <input
                                         type="email"
                                         id="email"
@@ -135,14 +186,16 @@ const Contact = () => {
                                         required
                                         value={formData.email}
                                         onChange={handleChange}
-                                        className="w-full bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent transition-all"
+                                        className="w-full bg-white/10 border border-white/15 text-white placeholder-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent focus:scale-[1.01] transition-all duration-300"
                                         placeholder="namithsalian@example.com"
                                     />
-                                </div>
+                                </motion.div>
 
                                 {/* Query Field */}
-                                <div className="space-y-1">
-                                    <label htmlFor="query" className="block text-sm font-medium text-gray-300">Your Message</label>
+                                <motion.div variants={fieldVariant} className="space-y-1.5">
+                                    <label htmlFor="query" className="block text-xs sm:text-sm font-semibold text-gray-200">
+                                        Your Message
+                                    </label>
                                     <textarea
                                         id="query"
                                         name="query"
@@ -150,27 +203,36 @@ const Contact = () => {
                                         rows="3"
                                         value={formData.query}
                                         onChange={handleChange}
-                                        className="w-full bg-white/5 border border-white/10 text-white placeholder-gray-500 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent transition-all resize-none"
+                                        className="w-full bg-white/10 border border-white/15 text-white placeholder-gray-400 rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-guild-red focus:border-transparent focus:scale-[1.01] transition-all duration-300 resize-none"
                                         placeholder="How can we help you today?"
                                     ></textarea>
-                                </div>
+                                </motion.div>
 
-                                {/* Submit Button */}
-                                <button
-                                    type="submit"
-                                    disabled={loading}
-                                    className={`w-full bg-guild-red hover:bg-red-800 text-white font-semibold py-3 mt-2 rounded-lg shadow-[0_0_15px_rgba(239,68,68,0.3)] hover:shadow-[0_0_25px_rgba(239,68,68,0.5)] transition-all transform hover:-translate-y-0.5 ${loading ? 'opacity-70 cursor-not-allowed transform-none hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]' : ''}`}
-                                >
-                                    {loading ? 'Sending Message...' : 'Send Message'}
-                                </button>
+                                {/* Animated Submit Button */}
+                                <motion.div variants={fieldVariant} className="pt-2">
+                                    <motion.button
+                                        whileHover={{ scale: 1.02, boxShadow: "0 0 25px rgba(239,68,68,0.5)" }}
+                                        whileTap={{ scale: 0.98 }}
+                                        type="submit"
+                                        disabled={loading}
+                                        className={`w-full bg-gradient-to-r from-guild-red via-red-600 to-guild-red text-white font-bold py-3 rounded-xl shadow-lg transition-all ${loading ? 'opacity-70 cursor-not-allowed' : ''}`}
+                                    >
+                                        {loading ? 'Sending Message...' : 'Send Message'}
+                                    </motion.button>
+                                </motion.div>
 
-                            </form>
-                        </div>
+                            </motion.form>
+                        </motion.div>
 
-                        {/* Alternative Contact Info directly below the form */}
-                        <div className="text-center mt-8 text-gray-500 text-sm">
-                            <p>Prefer to email us directly? Reach out at <a href="mailto:fashionstoreguild@gmail.com" className="text-guild-red hover:underline">fashionstoreguild@gmail.com</a></p>
-                        </div>
+                        {/* Alternative Contact Info */}
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: 0.5, delay: 0.4 }}
+                            className="text-center mt-8 text-gray-400 text-sm font-medium"
+                        >
+                            <p>Prefer to email us directly? Reach out at <a href="mailto:fashionstoreguild@gmail.com" className="text-guild-red font-bold hover:underline">fashionstoreguild@gmail.com</a></p>
+                        </motion.div>
 
                     </div>
                 </div>

@@ -1,83 +1,126 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import BurntPaperLayout from '../components/BurntPaperLayout';
 
 const PrivacyPolicy = () => {
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
-
     const fadeUp = {
         hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+    };
+
+    const staggerContainer = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.12 } }
     };
 
     return (
-        <div className="min-h-screen bg-guild-cream py-12 px-4 sm:px-6 lg:px-8 font-sans">
-            <div className="max-w-4xl mx-auto space-y-8 mt-8 bg-white p-8 md:p-12 rounded-3xl shadow-xl">
+        <BurntPaperLayout
+            title="Privacy Policy"
+            subtitle="How Guild Fashion Store collects, protects, and handles your personal information with uncompromising security."
+            icon={
+                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+            }
+        >
+            <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
 
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center text-guild-black hover:text-gray-600 transition-colors mb-6"
-                >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back
-                </button>
-
-                <motion.div initial="hidden" animate="visible" variants={fadeUp} className="text-center space-y-4">
-                    <h1 className="text-3xl md:text-5xl font-bold text-guild-black tracking-tight uppercase border-b-2 border-gray-100 pb-6">
-                        Privacy Policy
-                    </h1>
+                {/* Preamble */}
+                <motion.div variants={fadeUp} className="bg-amber-950/5 p-6 rounded-2xl border border-amber-900/20 leading-relaxed text-stone-800 text-base sm:text-lg">
+                    Welcome to <strong className="text-amber-950 font-bold">Guild Fashion Store</strong>. Your privacy and trust are critically important to us. This Privacy Policy outlines the categories of personal data collected when you browse or make purchases from our store and explains the protocols protecting your data.
                 </motion.div>
 
-                <motion.div initial="hidden" animate="visible" variants={fadeUp} className="space-y-6 text-gray-700 leading-relaxed text-lg text-justify">
-                    <p>
-                        Welcome to <strong className="text-guild-black">Guild Fashion Store</strong>. Your privacy is critically important to us. This Privacy Policy outlines the types of personal information that is received and collected by our store and how it is used.
-                    </p>
+                {/* Section Cards */}
+                <motion.div variants={fadeUp} className="space-y-6">
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">1. Information We Collect</h2>
-                    <p>
-                        We may collect personal identification information from Users in a variety of ways, including, but not limited to, when Users visit our site, register on the site, place an order, subscribe to the newsletter, and in connection with other activities, services, features, or resources we make available on our Site. Users may be asked for, as appropriate, name, email address, mailing address, phone number, and payment information.
-                    </p>
+                    {/* Section 1 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">1</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">Information We Collect</h2>
+                        </div>
+                        <p className="text-sm text-stone-700 leading-relaxed">
+                            We collect personal information when you register an account, place orders, participate in promotional events, or contact customer service. Data collected includes your full name, shipping address, email address, phone number, and transaction records.
+                        </p>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">2. How We Use Collected Information</h2>
-                    <p>
-                        Guild Fashion Store may collect and use Users&apos; personal information for the following purposes:
-                    </p>
-                    <ul className="list-disc pl-6 space-y-2">
-                        <li><strong>To improve customer service:</strong> Information you provide helps us respond to your customer service requests and support needs more efficiently.</li>
-                        <li><strong>To personalize user experience:</strong> We may use information in the aggregate to understand how our Users as a group use the services and resources provided on our Site.</li>
-                        <li><strong>To process payments:</strong> We may use the information Users provide about themselves when placing an order only to provide service to that order. We do not share this information with outside parties except to the extent necessary to provide the service.</li>
-                        <li><strong>To send periodic emails:</strong> We may use the email address to send User information and updates pertaining to their order. It may also be used to respond to their inquiries, questions, and/or other requests.</li>
-                    </ul>
+                    {/* Section 2 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-4">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">2</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">How We Use Collected Information</h2>
+                        </div>
+                        <ul className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm text-stone-700">
+                            <li className="bg-amber-950/5 p-3 rounded-xl border border-amber-900/10 flex items-start gap-2">
+                                <span className="text-amber-700 font-bold">&bull;</span>
+                                <span><strong>Order Fulfillments:</strong> Processing purchases, delivering apparel, and generating invoices.</span>
+                            </li>
+                            <li className="bg-amber-950/5 p-3 rounded-xl border border-amber-900/10 flex items-start gap-2">
+                                <span className="text-amber-700 font-bold">&bull;</span>
+                                <span><strong>Customer Support:</strong> Responding to order queries, size inquiries, and return requests.</span>
+                            </li>
+                            <li className="bg-amber-950/5 p-3 rounded-xl border border-amber-900/10 flex items-start gap-2">
+                                <span className="text-amber-700 font-bold">&bull;</span>
+                                <span><strong>Security &amp; Fraud Prevention:</strong> Protecting transactions against unauthorized access.</span>
+                            </li>
+                            <li className="bg-amber-950/5 p-3 rounded-xl border border-amber-900/10 flex items-start gap-2">
+                                <span className="text-amber-700 font-bold">&bull;</span>
+                                <span><strong>Updates &amp; Offers:</strong> Sending tracking notifications and exclusive fashion recommendations.</span>
+                            </li>
+                        </ul>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">3. How We Protect Your Information</h2>
-                    <p>
-                        We adopt appropriate data collection, storage, and processing practices and security measures to protect against unauthorized access, alteration, disclosure, or destruction of your personal information, username, password, transaction information, and data stored on our Site.
-                    </p>
+                    {/* Section 3 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">3</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">How We Protect Your Information</h2>
+                        </div>
+                        <p className="text-sm text-stone-700 leading-relaxed">
+                            We employ SSL/TLS encryption for all data transfers. Payment details are processed through encrypted, PCI-DSS compliant gateways (such as Razorpay). We never store raw payment credentials or card details on our servers.
+                        </p>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">4. Sharing Your Personal Information</h2>
-                    <p>
-                        We do not sell, trade, or rent Users&apos; personal identification information to others. We may share generic aggregated demographic information not linked to any personal identification information regarding visitors and users with our business partners, trusted affiliates, and advertisers for the purposes outlined above.
-                    </p>
+                    {/* Section 4 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">4</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">Sharing Your Personal Information</h2>
+                        </div>
+                        <p className="text-sm text-stone-700 leading-relaxed">
+                            We strictly do <strong>not</strong> sell, rent, or trade your personal information. Data is shared exclusively with necessary operational partners (e.g. logistics providers for delivery and payment gateways for checkout).
+                        </p>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">5. Changes to This Privacy Policy</h2>
-                    <p>
-                        Guild Fashion Store has the discretion to update this privacy policy at any time. When we do, we will revise the updated date at the bottom of this page. We encourage Users to frequently check this page for any changes to stay informed about how we are helping to protect the personal information we collect.
-                    </p>
+                    {/* Section 5 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">5</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">Updates to This Policy</h2>
+                        </div>
+                        <p className="text-sm text-stone-700 leading-relaxed">
+                            Guild Fashion Store reserves the right to update this Privacy Policy as our services evolve. Any revisions will be reflected on this page with an updated timestamp.
+                        </p>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">6. Contacting Us</h2>
-                    <p>
-                        If you have any questions about this Privacy Policy, the practices of this site, or your dealings with this site, please contact us at: <br />
-                        <a href="mailto:fashionstoreguild@gmail.com" className="text-blue-600 hover:underline">fashionstoreguild@gmail.com</a>
-                    </p>
                 </motion.div>
-            </div>
-        </div>
+
+                {/* Contact Box */}
+                <motion.div variants={fadeUp} className="bg-gradient-to-r from-amber-950 to-stone-900 text-amber-100 p-6 sm:p-8 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6 border border-amber-700/40">
+                    <div>
+                        <h3 className="text-xl font-black text-amber-400 font-serif">Privacy Concerns or Data Requests?</h3>
+                        <p className="text-xs sm:text-sm text-stone-300 mt-1">Contact our Data Protection desk anytime.</p>
+                    </div>
+                    <a
+                        href="mailto:fashionstoreguild@gmail.com"
+                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold px-6 py-3 rounded-xl shadow-lg transition-all text-sm shrink-0"
+                    >
+                        <span>Email Privacy Team</span>
+                    </a>
+                </motion.div>
+
+            </motion.div>
+        </BurntPaperLayout>
     );
 };
 

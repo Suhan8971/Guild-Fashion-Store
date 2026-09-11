@@ -1,77 +1,111 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import BurntPaperLayout from '../components/BurntPaperLayout';
 
 const TermsOfService = () => {
-    const navigate = useNavigate();
-
-    useEffect(() => {
-        window.scrollTo(0, 0);
-    }, []);
-
     const fadeUp = {
         hidden: { opacity: 0, y: 20 },
-        visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
+        visible: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } }
+    };
+
+    const staggerContainer = {
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.12 } }
     };
 
     return (
-        <div className="min-h-screen bg-guild-cream py-12 px-4 sm:px-6 lg:px-8 font-sans">
-            <div className="max-w-4xl mx-auto space-y-8 mt-8 bg-white p-8 md:p-12 rounded-3xl shadow-xl">
+        <BurntPaperLayout
+            title="Terms of Service"
+            subtitle="The legal guidelines and conditions governing your use of Guild Fashion Store."
+            icon={
+                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            }
+        >
+            <motion.div initial="hidden" animate="visible" variants={staggerContainer} className="space-y-8">
 
-                <button
-                    onClick={() => navigate(-1)}
-                    className="flex items-center text-guild-black hover:text-gray-600 transition-colors mb-6"
-                >
-                    <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back
-                </button>
-
-                <motion.div initial="hidden" animate="visible" variants={fadeUp} className="text-center space-y-4">
-                    <h1 className="text-3xl md:text-5xl font-bold text-guild-black tracking-tight uppercase border-b-2 border-gray-100 pb-6">
-                        Terms of Service
-                    </h1>
+                {/* Preamble */}
+                <motion.div variants={fadeUp} className="bg-amber-950/5 p-6 rounded-2xl border border-amber-900/20 leading-relaxed text-stone-800 text-base sm:text-lg">
+                    Welcome to <strong className="text-amber-950 font-bold">Guild Fashion Store</strong>. By accessing this platform, browsing our catalog, or completing a purchase, you agree to be bound by these Terms of Service.
                 </motion.div>
 
-                <motion.div initial="hidden" animate="visible" variants={fadeUp} className="space-y-6 text-gray-700 leading-relaxed text-lg text-justify">
-                    <p>
-                        Welcome to <strong className="text-guild-black">Guild Fashion Store</strong>. By accessing this website, we assume you accept these terms and conditions. Do not continue to use Guild Fashion Store if you do not agree to take all of the terms and conditions stated on this page.
-                    </p>
+                {/* Section Cards */}
+                <motion.div variants={fadeUp} className="space-y-6">
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">1. License</h2>
-                    <p>
-                        Unless otherwise stated, Guild Fashion Store and/or its licensors own the intellectual property rights for all material on Guild Fashion Store. All intellectual property rights are reserved. You may access this from Guild Fashion Store for your own personal use subjected to restrictions set in these terms and conditions.
-                    </p>
+                    {/* Section 1 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">1</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">Intellectual Property &amp; License</h2>
+                        </div>
+                        <p className="text-sm text-stone-700 leading-relaxed">
+                            Unless otherwise stated, Guild Fashion Store and its founders hold full intellectual property rights for all product designs, branding, logos, graphics, and digital media displayed on this website. Content may be accessed solely for personal, non-commercial shopping purposes.
+                        </p>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">2. User Accounts</h2>
-                    <p>
-                        To access certain features of the website, you may be required to register for an account. You agree to provide accurate, current, and complete information during the registration process and maintain the security of your password and identification. Guild Fashion Store holds the right to terminate accounts that violate our policies or community standards.
-                    </p>
+                    {/* Section 2 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">2</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">User Accounts &amp; Conduct</h2>
+                        </div>
+                        <p className="text-sm text-stone-700 leading-relaxed">
+                            When creating an account, you agree to provide truthful and accurate information. You are responsible for safeguarding your login credentials. Guild Fashion Store reserves the right to terminate accounts involved in fraudulent activity or policy violations.
+                        </p>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">3. Purchases and Payment</h2>
-                    <p>
-                        All purchases made through our website are subject to product availability. We reserve the right to refuse or cancel any order at any time for reasons including but not limited to: product or service availability, errors in the description or price of the product or service, or an error in your order.
-                    </p>
+                    {/* Section 3 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">3</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">Purchases, Pricing &amp; Stock Availability</h2>
+                        </div>
+                        <p className="text-sm text-stone-700 leading-relaxed">
+                            All apparel pricing is displayed in Indian Rupees (INR) inclusive of applicable taxes unless stated otherwise. Prices and stock availability are subject to change without prior notice. We reserve the right to decline or cancel orders affected by technical pricing errors.
+                        </p>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">4. Modifications to the Service and Prices</h2>
-                    <p>
-                        Prices for our products are subject to change without notice. We reserve the right at any time to modify or discontinue the Service (or any part or content thereof) without notice at any time. We shall not be liable to you or to any third-party for any modification, price change, suspension or discontinuance of the Service.
-                    </p>
+                    {/* Section 4 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">4</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">Limitation of Liability</h2>
+                        </div>
+                        <p className="text-sm text-stone-700 leading-relaxed">
+                            Guild Fashion Store and its team shall not be held liable for indirect, incidental, or consequential damages resulting from the use or inability to use our services, beyond the purchase price of the item in question.
+                        </p>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">5. Limitation of Liability</h2>
-                    <p>
-                        In no event shall Guild Fashion Store, nor any of its officers, directors, and employees, be held liable for anything arising out of or in any way connected with your use of this website whether such liability is under contract. Guild Fashion Store, including its officers, directors, and employees shall not be held liable for any indirect, consequential, or special liability arising out of or in any way related to your use of this website.
-                    </p>
+                    {/* Section 5 */}
+                    <div className="bg-white/80 p-6 sm:p-8 rounded-2xl border border-amber-900/20 shadow-sm space-y-3">
+                        <div className="flex items-center gap-3">
+                            <span className="w-9 h-9 rounded-xl bg-amber-950 text-amber-400 font-extrabold flex items-center justify-center text-sm">5</span>
+                            <h2 className="text-xl font-bold text-amber-950 font-serif">Governing Law</h2>
+                        </div>
+                        <p className="text-sm text-stone-700 leading-relaxed">
+                            These Terms of Service are governed by and construed in accordance with the laws of India. Any disputes arising out of these terms shall be subject to the jurisdiction of courts in Mangalore, Karnataka.
+                        </p>
+                    </div>
 
-                    <h2 className="text-2xl font-bold text-guild-black mt-8">Contact Us</h2>
-                    <p>
-                        If you have any questions or suggestions about our Terms and Conditions, do not hesitate to contact us at: <br />
-                        <a href="mailto:fashionstoreguild@gmail.com" className="text-blue-600 hover:underline">fashionstoreguild@gmail.com</a>
-                    </p>
                 </motion.div>
-            </div>
-        </div>
+
+                {/* Contact Box */}
+                <motion.div variants={fadeUp} className="bg-gradient-to-r from-amber-950 to-stone-900 text-amber-100 p-6 sm:p-8 rounded-2xl shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6 border border-amber-700/40">
+                    <div>
+                        <h3 className="text-xl font-black text-amber-400 font-serif">Questions about Terms of Service?</h3>
+                        <p className="text-xs sm:text-sm text-stone-300 mt-1">Our support team is happy to answer any legal or policy questions.</p>
+                    </div>
+                    <a
+                        href="mailto:fashionstoreguild@gmail.com"
+                        className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-400 text-amber-950 font-bold px-6 py-3 rounded-xl shadow-lg transition-all text-sm shrink-0"
+                    >
+                        <span>Contact Legal Team</span>
+                    </a>
+                </motion.div>
+
+            </motion.div>
+        </BurntPaperLayout>
     );
 };
 
